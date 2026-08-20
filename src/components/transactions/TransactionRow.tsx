@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ArrowDownCircle, ArrowUpCircle, ImageOff, Pencil, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Transaction } from '../../types';
+import { resolveApiUrl } from '../../api/client';
 import { formatCurrency } from '../../lib/currency';
 import { formatDateShort } from '../../lib/dates';
 import { ImagePreviewModal } from './ImagePreviewModal';
@@ -42,7 +43,11 @@ export function TransactionRow({ transaction: tx, onDelete, compact }: Transacti
           className="shrink-0 overflow-hidden rounded-lg border border-slate-200"
           aria-label="Ver comprobante"
         >
-          <img src={tx.receiptImageUrl} alt="Comprobante" className="h-9 w-9 object-cover" />
+          <img
+            src={resolveApiUrl(tx.receiptImageUrl)}
+            alt="Comprobante"
+            className="h-9 w-9 object-cover"
+          />
         </button>
       ) : (
         !compact && (
@@ -82,7 +87,11 @@ export function TransactionRow({ transaction: tx, onDelete, compact }: Transacti
       )}
 
       {tx.receiptImageUrl && (
-        <ImagePreviewModal open={previewOpen} onClose={() => setPreviewOpen(false)} src={tx.receiptImageUrl} />
+        <ImagePreviewModal
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          src={resolveApiUrl(tx.receiptImageUrl)}
+        />
       )}
     </div>
   );
