@@ -1,4 +1,5 @@
 import { CURRENCIES, DEFAULT_CATEGORIES, type TransactionsQuery } from '../../types';
+import { useCategories } from '../../hooks/useCategories';
 
 interface TransactionsFiltersProps {
   filters: TransactionsQuery;
@@ -6,6 +7,14 @@ interface TransactionsFiltersProps {
 }
 
 export function TransactionsFilters({ filters, onChange }: TransactionsFiltersProps) {
+  // Igual que en TransactionForm: si el backend no tiene categorías todavía
+  // o la petición falla, se cae de vuelta a DEFAULT_CATEGORIES.
+  const { data: categoriesData } = useCategories({ active: true });
+  const categoryOptions =
+    categoriesData && categoriesData.length > 0
+      ? Array.from(new Set(categoriesData.map((c) => c.name))).sort((a, b) => a.localeCompare(b))
+      : DEFAULT_CATEGORIES;
+
   function update(patch: Partial<TransactionsQuery>) {
     onChange({ ...filters, ...patch, page: 1 });
   }
@@ -58,7 +67,7 @@ export function TransactionsFilters({ filters, onChange }: TransactionsFiltersPr
             className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm focus:border-emerald-500 focus:outline-none"
           >
             <option value="">Todas</option>
-            {DEFAULT_CATEGORIES.map((c) => (
+            {categoryOptions.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>

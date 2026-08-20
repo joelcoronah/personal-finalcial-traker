@@ -5,6 +5,8 @@ import NewTransaction from './pages/NewTransaction';
 import TransactionsList from './pages/TransactionsList';
 import EditTransaction from './pages/EditTransaction';
 import Reports from './pages/Reports';
+import Categories from './pages/Categories';
+import Plan from './pages/Plan';
 
 export default function App() {
   return (
@@ -15,6 +17,8 @@ export default function App() {
         <Route path="/transacciones" element={<TransactionsList />} />
         <Route path="/transacciones/:id/editar" element={<EditTransaction />} />
         <Route path="/resumen" element={<Reports />} />
+        <Route path="/categorias" element={<Categories />} />
+        <Route path="/plan" element={<Plan />} />
       </Route>
     </Routes>
   );

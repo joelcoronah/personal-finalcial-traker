@@ -125,6 +125,83 @@ export interface PaginatedResponse<T> {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Categorías (CRUD en /categorias)
+// ---------------------------------------------------------------------------
+
+/** Grupo del plan 50/30/20 al que puede pertenecer una categoría. */
+export type BudgetGroup = 'needs' | 'wants' | 'savings';
+
+export const BUDGET_GROUPS: BudgetGroup[] = ['needs', 'wants', 'savings'];
+
+export const BUDGET_GROUP_LABEL: Record<BudgetGroup, string> = {
+  needs: 'Necesidades',
+  wants: 'Gustos',
+  savings: 'Ahorro',
+};
+
+/**
+ * Categoría gestionable por el usuario. Es la fuente de verdad para los
+ * selects de categoría en el formulario de transacciones y los filtros;
+ * DEFAULT_CATEGORIES queda solo como fallback si el backend todavía no
+ * tiene el módulo de categorías o la petición falla.
+ *
+ * Nota: Transaction.category sigue siendo un string libre (no una FK) para
+ * no perder el histórico si una categoría se borra o se renombra.
+ */
+export interface Category {
+  id: string;
+  name: string;
+  type: TransactionType;
+  budgetGroup?: BudgetGroup | null;
+  color?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Payload para crear/editar una categoría. */
+export interface CategoryInput {
+  name: string;
+  type: TransactionType;
+  budgetGroup?: BudgetGroup | null;
+  color?: string | null;
+  isActive?: boolean;
+}
+
+export interface CategoriesQuery {
+  type?: TransactionType;
+  active?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Plan 50/30/20 (un objetivo por mes, en /budget-plans/:month)
+// ---------------------------------------------------------------------------
+
+/**
+ * Objetivo de distribución del gasto para un mes ("yyyy-MM"), guardado una
+ * sola vez por mes (upsert vía PUT /budget-plans/:month). needsPct +
+ * wantsPct + savingsPct siempre suman 100 (lo valida el backend).
+ */
+export interface BudgetPlan {
+  id: string;
+  month: string; // "yyyy-MM"
+  needsPct: number;
+  wantsPct: number;
+  savingsPct: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BudgetPlanInput {
+  needsPct: number;
+  wantsPct: number;
+  savingsPct: number;
+}
+
+/** Objetivo clásico 50/30/20, usado como punto de partida cuando un mes aún no tiene plan guardado. */
+export const DEFAULT_BUDGET_PLAN: BudgetPlanInput = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
+
 /** Totales en las 4 monedas de referencia. */
 export type CurrencyTotals = Record<Currency, number>;
 

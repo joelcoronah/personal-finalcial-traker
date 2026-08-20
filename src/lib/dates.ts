@@ -2,6 +2,7 @@ import {
   startOfMonth,
   endOfMonth,
   subMonths,
+  addMonths,
   format,
   formatISO,
 } from 'date-fns';
@@ -51,4 +52,36 @@ export function formatDateShort(isoDate: string): string {
 
 export function todayISO(): string {
   return toDateOnlyISO(new Date());
+}
+
+// ---------------------------------------------------------------------------
+// Mes como clave "yyyy-MM" (usado por el Plan 50/30/20, que guarda un
+// objetivo por mes). Se construye la fecha con año/mes explícitos en vez de
+// parsear el string directamente para no depender de cómo cada motor JS
+// interpreta zonas horarias en "yyyy-MM".
+// ---------------------------------------------------------------------------
+
+function monthKeyToDate(month: string): Date {
+  const [year, m] = month.split('-').map(Number);
+  return new Date(year, m - 1, 1);
+}
+
+export function currentMonthKey(): string {
+  return format(new Date(), 'yyyy-MM');
+}
+
+export function shiftMonthKey(month: string, delta: number): string {
+  return format(addMonths(monthKeyToDate(month), delta), 'yyyy-MM');
+}
+
+/** Rango [from, to] (ISO yyyy-MM-dd) que cubre el mes completo de `month`. */
+export function getMonthRange(month: string): DateRange {
+  const date = monthKeyToDate(month);
+  return { from: toDateOnlyISO(startOfMonth(date)), to: toDateOnlyISO(endOfMonth(date)) };
+}
+
+/** Ej: "2026-08" -> "Agosto 2026" */
+export function formatMonthLabel(month: string): string {
+  const label = format(monthKeyToDate(month), 'MMMM yyyy', { locale: es });
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }

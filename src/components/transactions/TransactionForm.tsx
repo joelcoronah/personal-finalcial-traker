@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import {
@@ -13,6 +13,7 @@ import {
 import { CURRENCY_SYMBOL, formatCurrency, toVES } from '../../lib/currency';
 import { todayISO } from '../../lib/dates';
 import { useRates } from '../../hooks/useRates';
+import { useCategories } from '../../hooks/useCategories';
 import { ImageDropzone } from './ImageDropzone';
 
 export interface TransactionFormValues {
@@ -41,6 +42,15 @@ export function TransactionForm({
   const { data: rates } = useRates();
 
   const [type, setType] = useState<TransactionType>(initialData?.type ?? 'expense');
+  // Las categorías se filtran por tipo (income/expense). Si el backend
+  // todavía no tiene el módulo de categorías o la petición falla, se cae de
+  // vuelta a DEFAULT_CATEGORIES para que el formulario siga siendo usable.
+  const { data: categoriesData } = useCategories({ type, active: true });
+  const categoryOptions = useMemo(() => {
+    const names = categoriesData?.map((c) => c.name) ?? [];
+    const base = names.length > 0 ? names : [...DEFAULT_CATEGORIES];
+    return base.includes('Otra') ? base : [...base, 'Otra'];
+  }, [categoriesData]);
   const [amount, setAmount] = useState(initialData ? String(initialData.amountOriginal) : '');
   const [currency, setCurrency] = useState<Currency>(initialData?.currencyOriginal ?? 'VES');
   const [date, setDate] = useState(initialData?.date?.slice(0, 10) ?? todayISO());
@@ -56,6 +66,20 @@ export function TransactionForm({
 
   const isOtherCategory = category === 'Otra';
   const numericAmount = Number(amount.replace(',', '.'));
+
+  // Las categorías dependen del tipo (income/expense); si el usuario cambia
+  // de tipo después de montar el form, la categoría seleccionada ya no
+  // aplica y hay que limpiarla (no corre en el primer render, para no pisar
+  // initialData al editar).
+  const isFirstTypeRender = useRef(true);
+  useEffect(() => {
+    if (isFirstTypeRender.current) {
+      isFirstTypeRender.current = false;
+      return;
+    }
+    setCategory('');
+    setCustomCategory('');
+  }, [type]);
 
   const estimatedVES = useMemo(() => {
     if (!rates || !numericAmount) return null;
@@ -167,7 +191,7 @@ export function TransactionForm({
           <option value="" disabled>
             Selecciona una categoría
           </option>
-          {DEFAULT_CATEGORIES.map((c) => (
+          {categoryOptions.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>
