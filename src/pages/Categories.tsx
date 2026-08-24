@@ -9,7 +9,7 @@ import { ErrorState } from '../components/common/ErrorState';
 import { CategoryForm } from '../components/categories/CategoryForm';
 import { useCategories } from '../hooks/useCategories';
 import { useCreateCategory, useDeleteCategory, useUpdateCategory } from '../hooks/useCategoryMutations';
-import { BUDGET_GROUP_LABEL, type Category, type CategoryInput } from '../types';
+import { BUDGET_GROUP_LABEL, BUDGET_GROUPS, type BudgetGroup, type Category, type CategoryInput } from '../types';
 
 export default function Categories() {
   const { data: categories, isLoading, isError, refetch } = useCategories();
@@ -82,7 +82,7 @@ export default function Categories() {
         />
       ) : (
         <>
-          <CategoryGroup title="Gastos" categories={expense} onEdit={openEdit} onDelete={setPendingDeleteId} />
+          <ExpenseCategoryGroups categories={expense} onEdit={openEdit} onDelete={setPendingDeleteId} />
           <CategoryGroup title="Ingresos" categories={income} onEdit={openEdit} onDelete={setPendingDeleteId} />
         </>
       )}
@@ -127,41 +127,92 @@ function CategoryGroup({ title, categories, onEdit, onDelete }: CategoryGroupPro
       <h2 className="mb-2 text-sm font-semibold text-slate-500">{title}</h2>
       <div className="flex flex-col divide-y divide-slate-100">
         {categories.map((c) => (
-          <div key={c.id} className="flex items-center gap-3 py-2.5">
-            <span
-              className="h-3 w-3 shrink-0 rounded-full"
-              style={{ backgroundColor: c.color ?? '#94a3b8' }}
-            />
-            <div className="min-w-0 flex-1">
-              <p
-                className={clsx(
-                  'truncate text-sm font-medium',
-                  c.isActive ? 'text-slate-700' : 'text-slate-400',
-                )}
-              >
-                {c.name}
-              </p>
-              {c.budgetGroup && (
-                <p className="text-xs text-slate-400">{BUDGET_GROUP_LABEL[c.budgetGroup]}</p>
-              )}
+          <CategoryRow key={c.id} category={c} onEdit={onEdit} onDelete={onDelete} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const NO_BUDGET_GROUP_LABEL = 'Sin grupo';
+
+/**
+ * "Gastos" sub-agrupado por budgetGroup (Necesidades/Gustos/Ahorro), que es
+ * el mismo grupo del plan 50/30/20 usado en la página Plan del mes. Las
+ * categorías de gasto sin budgetGroup asignado caen en un bucket aparte
+ * "Sin grupo" al final.
+ */
+function ExpenseCategoryGroups({
+  categories,
+  onEdit,
+  onDelete,
+}: Omit<CategoryGroupProps, 'title'>) {
+  if (categories.length === 0) return null;
+
+  const buckets: { key: string; label: string; items: Category[] }[] = [
+    ...BUDGET_GROUPS.map((g: BudgetGroup) => ({
+      key: g,
+      label: BUDGET_GROUP_LABEL[g],
+      items: categories.filter((c) => c.budgetGroup === g),
+    })),
+    { key: 'none', label: NO_BUDGET_GROUP_LABEL, items: categories.filter((c) => !c.budgetGroup) },
+  ].filter((bucket) => bucket.items.length > 0);
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 className="mb-3 text-sm font-semibold text-slate-500">Gastos</h2>
+      <div className="flex flex-col gap-4">
+        {buckets.map((bucket) => (
+          <div key={bucket.key}>
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              {bucket.label}
+            </h3>
+            <div className="flex flex-col divide-y divide-slate-100">
+              {bucket.items.map((c) => (
+                <CategoryRow key={c.id} category={c} onEdit={onEdit} onDelete={onDelete} />
+              ))}
             </div>
-            <button
-              onClick={() => onEdit(c)}
-              className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-              aria-label="Editar"
-            >
-              <Pencil size={15} />
-            </button>
-            <button
-              onClick={() => onDelete(c.id)}
-              className="rounded-full p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"
-              aria-label="Eliminar"
-            >
-              <Trash2 size={15} />
-            </button>
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function CategoryRow({
+  category: c,
+  onEdit,
+  onDelete,
+}: {
+  category: Category;
+  onEdit: (category: Category) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 py-2.5">
+      <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: c.color ?? '#94a3b8' }} />
+      <p
+        className={clsx(
+          'min-w-0 flex-1 truncate text-sm font-medium',
+          c.isActive ? 'text-slate-700' : 'text-slate-400',
+        )}
+      >
+        {c.name}
+      </p>
+      <button
+        onClick={() => onEdit(c)}
+        className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+        aria-label="Editar"
+      >
+        <Pencil size={15} />
+      </button>
+      <button
+        onClick={() => onDelete(c.id)}
+        className="rounded-full p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500"
+        aria-label="Eliminar"
+      >
+        <Trash2 size={15} />
+      </button>
     </div>
   );
 }
