@@ -66,3 +66,24 @@ export function toVES(amount: number, currency: Currency, rates: RatesSnapshot):
       return amount;
   }
 }
+
+/**
+ * Inversa de toVES: convierte un monto en VES a su equivalente en
+ * `currency` usando las tasas del día. Útil para mostrar equivalencias
+ * (ej. cuánto de un monto en Bs. representa en USD/USDT) sin depender de un
+ * snapshot histórico. Devuelve 0 si la tasa no está disponible aún.
+ */
+export function fromVES(amountVES: number, currency: Currency, rates: RatesSnapshot): number {
+  switch (currency) {
+    case 'VES':
+      return amountVES;
+    case 'USD':
+      return rates.usdBcv ? amountVES / rates.usdBcv : 0;
+    case 'EUR':
+      return rates.eurBcv ? amountVES / rates.eurBcv : 0;
+    case 'USDT':
+      return rates.usdt ? amountVES / rates.usdt : 0;
+    default:
+      return amountVES;
+  }
+}

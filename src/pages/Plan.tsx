@@ -6,9 +6,21 @@ import { ErrorState } from '../components/common/ErrorState';
 import { Skeleton } from '../components/common/Skeleton';
 import { useBudgetPlanProgress } from '../hooks/useBudgetPlan';
 import { useSaveBudgetPlan } from '../hooks/useBudgetPlanMutations';
+import { useRates } from '../hooks/useRates';
 import { currentMonthKey, formatMonthLabel, shiftMonthKey } from '../lib/dates';
-import { formatCurrency } from '../lib/currency';
-import { BUDGET_GROUP_LABEL, BUDGET_GROUPS, DEFAULT_BUDGET_PLAN, type BudgetGroup } from '../types';
+import { formatCurrency, fromVES } from '../lib/currency';
+import { BUDGET_GROUP_LABEL, BUDGET_GROUPS, DEFAULT_BUDGET_PLAN, type BudgetGroup, type Rates } from '../types';
+
+/**
+ * Bs. es la moneda "de verdad" del monto (amountVES ya es la fuente de
+ * verdad del backend); USD/USDT son solo una equivalencia informativa al
+ * tipo de cambio del día, así que si /rates/today aún no cargó simplemente
+ * se omiten en vez de bloquear el render de la página.
+ */
+function formatEquivalents(amountVES: number, rates: Rates | undefined): string | null {
+  if (!rates) return null;
+  return `${formatCurrency(fromVES(amountVES, 'USD', rates), 'USD')} · ${formatCurrency(fromVES(amountVES, 'USDT', rates), 'USDT')}`;
+}
 
 // El plan solo se mide contra gastos: las 3 categorías del 50/30/20
 // (necesidades/gustos/ahorro) son, por diseño, categorías de tipo "expense"
@@ -23,6 +35,7 @@ export default function Plan() {
   const [month, setMonth] = useState(currentMonthKey());
 
   const { data: progress, isLoading, isError, refetch } = useBudgetPlanProgress(month);
+  const { data: rates } = useRates();
 
   const [needsPct, setNeedsPct] = useState(DEFAULT_BUDGET_PLAN.needsPct);
   const [wantsPct, setWantsPct] = useState(DEFAULT_BUDGET_PLAN.wantsPct);
@@ -113,6 +126,8 @@ export default function Plan() {
                   color={GROUP_COLOR[g]}
                   target={targetByGroup[g]}
                   actual={progress.groups[g].actualPct}
+                  amount={progress.groups[g].amountVES}
+                  equivalents={formatEquivalents(progress.groups[g].amountVES, rates)}
                 />
               ))}
 
@@ -121,10 +136,15 @@ export default function Plan() {
                   <div className="mb-1 flex items-center justify-between text-sm">
                     <span className="font-medium text-slate-500">Sin categorizar</span>
                     <span className="text-xs text-slate-400">
-                      {formatCurrency(progress.unclassified.amountVES, 'VES')} ·{' '}
                       {progress.unclassified.actualPct.toFixed(0)}%
                     </span>
                   </div>
+                  <p className="mb-1 text-xs text-slate-400">
+                    {formatCurrency(progress.unclassified.amountVES, 'VES')}
+                    {formatEquivalents(progress.unclassified.amountVES, rates) && (
+                      <> · {formatEquivalents(progress.unclassified.amountVES, rates)}</>
+                    )}
+                  </p>
                   <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
                     <div
                       className="h-full rounded-full bg-slate-300"
@@ -140,6 +160,29 @@ export default function Plan() {
                   </p>
                 </div>
               )}
+
+              <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-slate-500">Total gastado</span>
+                  <span className="font-semibold text-slate-700">
+                    {formatCurrency(progress.expenseVES, 'VES')}
+                  </span>
+                </div>
+                {formatEquivalents(progress.expenseVES, rates) && (
+                  <p className="-mt-1 text-right text-xs text-slate-400">
+                    {formatEquivalents(progress.expenseVES, rates)}
+                  </p>
+                )}
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>Ingreso del mes</span>
+                  <span>
+                    {formatCurrency(progress.incomeVES, 'VES')}
+                    {formatEquivalents(progress.incomeVES, rates) && (
+                      <> · {formatEquivalents(progress.incomeVES, rates)}</>
+                    )}
+                  </span>
+                </div>
+              </div>
             </>
           )}
         </div>
@@ -184,11 +227,15 @@ function GroupBar({
   color,
   target,
   actual,
+  amount,
+  equivalents,
 }: {
   label: string;
   color: string;
   target: number;
   actual: number;
+  amount: number;
+  equivalents: string | null;
 }) {
   return (
     <div>
@@ -198,9 +245,14 @@ function GroupBar({
           {label}
         </span>
         <span className="text-xs text-slate-400">
-          Meta {target}% · Real <span className="font-semibold text-slate-600">{actual.toFixed(0)}%</span>
+          Meta {target}% · Real{' '}
+          <span className="font-semibold text-slate-600">{actual.toFixed(0)}%</span>
         </span>
       </div>
+      <p className="mb-1 text-xs text-slate-400">
+        {formatCurrency(amount, 'VES')}
+        {equivalents && <> · {equivalents}</>}
+      </p>
       <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
         <div
           className="h-full rounded-full transition-all"
