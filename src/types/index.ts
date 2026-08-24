@@ -4,11 +4,11 @@
 // ---------------------------------------------------------------------------
 
 /** Monedas de referencia que maneja la app. */
-export type Currency = 'VES' | 'USD' | 'EUR' | 'USDT';
+export type Currency = "VES" | "USD" | "EUR" | "USDT";
 
-export const CURRENCIES: Currency[] = ['VES', 'USD', 'EUR', 'USDT'];
+export const CURRENCIES: Currency[] = ["VES", "USD", "EUR", "USDT"];
 
-export type TransactionType = 'income' | 'expense';
+export type TransactionType = "income" | "expense";
 
 /**
  * Tasas del día, tal como las expone el backend en GET /rates/today.
@@ -39,42 +39,42 @@ export interface RatesSnapshot {
 
 /** Categorías sugeridas por defecto (el usuario puede escribir "otra"). */
 export const DEFAULT_CATEGORIES = [
-  'Alimentación',
-  'Transporte',
-  'Vivienda',
-  'Servicios',
-  'Salud',
-  'Educación',
-  'Entretenimiento',
-  'Ropa',
-  'Ahorro / Inversión',
-  'Deudas',
-  'Salario',
-  'Otros ingresos',
-  'Otra',
+  "Alimentación",
+  "Transporte",
+  "Vivienda",
+  "Servicios",
+  "Salud",
+  "Educación",
+  "Entretenimiento",
+  "Ropa",
+  "Ahorro / Inversión",
+  "Deudas",
+  "Salario",
+  "Otros ingresos",
+  "Otra",
 ] as const;
 
 export type PaymentMethod =
-  | 'Efectivo Bs.'
-  | 'Pago móvil'
-  | 'Transferencia'
-  | 'Zelle'
-  | 'Efectivo USD'
-  | 'Tarjeta débito'
-  | 'Tarjeta crédito'
-  | 'Binance / Cripto'
-  | 'Otro';
+  | "Efectivo Bs."
+  | "Pago móvil"
+  | "Transferencia"
+  | "Efectivo USD"
+  | "Tarjeta débito"
+  | "Tarjeta crédito"
+  | "Binance / Cripto"
+  | "Cashea"
+  | "Otro";
 
 export const PAYMENT_METHODS: PaymentMethod[] = [
-  'Efectivo Bs.',
-  'Pago móvil',
-  'Transferencia',
-  'Zelle',
-  'Efectivo USD',
-  'Tarjeta débito',
-  'Tarjeta crédito',
-  'Binance / Cripto',
-  'Otro',
+  "Efectivo Bs.",
+  "Pago móvil",
+  "Transferencia",
+  "Efectivo USD",
+  "Tarjeta débito",
+  "Tarjeta crédito",
+  "Binance / Cripto",
+  "Cashea",
+  "Otro",
 ];
 
 export interface Transaction {
@@ -130,14 +130,14 @@ export interface PaginatedResponse<T> {
 // ---------------------------------------------------------------------------
 
 /** Grupo del plan 50/30/20 al que puede pertenecer una categoría. */
-export type BudgetGroup = 'needs' | 'wants' | 'savings';
+export type BudgetGroup = "needs" | "wants" | "savings";
 
-export const BUDGET_GROUPS: BudgetGroup[] = ['needs', 'wants', 'savings'];
+export const BUDGET_GROUPS: BudgetGroup[] = ["needs", "wants", "savings"];
 
 export const BUDGET_GROUP_LABEL: Record<BudgetGroup, string> = {
-  needs: 'Necesidades',
-  wants: 'Gustos',
-  savings: 'Ahorro',
+  needs: "Necesidades",
+  wants: "Gustos",
+  savings: "Ahorro",
 };
 
 /**
@@ -200,7 +200,11 @@ export interface BudgetPlanInput {
 }
 
 /** Objetivo clásico 50/30/20, usado como punto de partida cuando un mes aún no tiene plan guardado. */
-export const DEFAULT_BUDGET_PLAN: BudgetPlanInput = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
+export const DEFAULT_BUDGET_PLAN: BudgetPlanInput = {
+  needsPct: 50,
+  wantsPct: 30,
+  savingsPct: 20,
+};
 
 /**
  * Monto real de un grupo (en las 4 monedas de referencia) y qué % de
