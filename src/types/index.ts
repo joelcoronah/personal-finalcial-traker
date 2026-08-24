@@ -202,16 +202,21 @@ export interface BudgetPlanInput {
 /** Objetivo clásico 50/30/20, usado como punto de partida cuando un mes aún no tiene plan guardado. */
 export const DEFAULT_BUDGET_PLAN: BudgetPlanInput = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 
-/** Monto real de un grupo y qué % representa sobre el ingreso del mes. */
+/**
+ * Monto real de un grupo (en las 4 monedas de referencia) y qué % de
+ * amount.VES representa sobre el ingreso del mes. amount es la suma de cada
+ * transacción del grupo ya convertida con SU PROPIA tasa histórica — no el
+ * total en VES reconvertido con la tasa de hoy (ver comentario en Summary).
+ */
 export interface BudgetGroupProgress {
-  amountVES: number;
+  amount: CurrencyTotals;
   actualPct: number;
 }
 
 /**
  * Meta vs. real de un mes, ya calculado por el backend en
  * GET /budget-plans/:month/progress. actualPct de cada grupo (y de
- * unclassified) es % sobre incomeVES, no sobre el gasto total — así es como
+ * unclassified) es % sobre income.VES, no sobre el gasto total — así es como
  * se mide la regla 50/30/20 (cuánto de lo que entró se fue a cada grupo).
  * targetPct es null si el mes no tiene plan guardado (hasPlan: false); en
  * ese caso el frontend debe caer en DEFAULT_BUDGET_PLAN para el formulario.
@@ -220,8 +225,8 @@ export interface BudgetPlanProgress {
   month: string;
   hasPlan: boolean;
   targetPct: { needs: number; wants: number; savings: number } | null;
-  incomeVES: number;
-  expenseVES: number;
+  income: CurrencyTotals;
+  expense: CurrencyTotals;
   groups: Record<BudgetGroup, BudgetGroupProgress>;
   unclassified: BudgetGroupProgress;
 }
@@ -240,11 +245,19 @@ export interface CategoryBreakdownItem extends CurrencyTotals {
 
 export interface Summary {
   period: { from: string; to: string };
+  /**
+   * USD/EUR/USDT en totals y byCategory son la SUMA de cada transacción ya
+   * convertida con su propia tasa histórica (rateSnapshot congelado al
+   * crearla) — no el total en VES reconvertido con la tasa de hoy. Así
+   * reflejan lo que esas compras costaron realmente en dólares/USDT cuando
+   * pasaron, en vez de revalorizar todo el acumulado a la tasa de hoy.
+   */
   totals: {
     income: CurrencyTotals;
     expense: CurrencyTotals;
     balance: CurrencyTotals;
   };
   byCategory: CategoryBreakdownItem[];
-  ratesUsed: RatesSnapshot;
+  /** Tasas de HOY, solo de referencia — no son las usadas para los totales de arriba. */
+  currentRates: RatesSnapshot;
 }
