@@ -4,20 +4,11 @@ import clsx from 'clsx';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ErrorState } from '../components/common/ErrorState';
 import { Skeleton } from '../components/common/Skeleton';
-import { useBudgetPlan } from '../hooks/useBudgetPlan';
+import { useBudgetPlanProgress } from '../hooks/useBudgetPlan';
 import { useSaveBudgetPlan } from '../hooks/useBudgetPlanMutations';
-import { useCategories } from '../hooks/useCategories';
-import { useTransactions } from '../hooks/useTransactions';
-import { currentMonthKey, formatMonthLabel, getMonthRange, shiftMonthKey } from '../lib/dates';
+import { currentMonthKey, formatMonthLabel, shiftMonthKey } from '../lib/dates';
 import { formatCurrency } from '../lib/currency';
-import {
-  BUDGET_GROUP_LABEL,
-  BUDGET_GROUPS,
-  DEFAULT_BUDGET_PLAN,
-  type BudgetGroup,
-  type Category,
-  type Transaction,
-} from '../types';
+import { BUDGET_GROUP_LABEL, BUDGET_GROUPS, DEFAULT_BUDGET_PLAN, type BudgetGroup } from '../types';
 
 // El plan solo se mide contra gastos: las 3 categorías del 50/30/20
 // (necesidades/gustos/ahorro) son, por diseño, categorías de tipo "expense"
@@ -28,82 +19,36 @@ const GROUP_COLOR: Record<BudgetGroup, string> = {
   savings: '#10b981',
 };
 
-interface ActualTotals {
-  needs: number;
-  wants: number;
-  savings: number;
-  unclassified: number;
-  total: number;
-}
-
-/**
- * Suma amountVES por grupo, cruzando las transacciones de gasto del mes con
- * el budgetGroup de cada categoría. Categorías sin grupo (o borradas/no
- * encontradas) caen en "unclassified".
- */
-function computeActualTotals(transactions: Transaction[], categories: Category[]): ActualTotals {
-  const groupByCategory = new Map(categories.map((c) => [c.name, c.budgetGroup ?? null]));
-  const totals: ActualTotals = { needs: 0, wants: 0, savings: 0, unclassified: 0, total: 0 };
-
-  for (const tx of transactions) {
-    totals.total += tx.amountVES;
-    const group = groupByCategory.get(tx.category);
-    if (group === 'needs' || group === 'wants' || group === 'savings') {
-      totals[group] += tx.amountVES;
-    } else {
-      totals.unclassified += tx.amountVES;
-    }
-  }
-
-  return totals;
-}
-
 export default function Plan() {
   const [month, setMonth] = useState(currentMonthKey());
-  const range = useMemo(() => getMonthRange(month), [month]);
 
-  const { data: plan, isLoading: planLoading, isError: planError, refetch: refetchPlan } = useBudgetPlan(month);
-  // Sin filtro `active`: una transacción vieja puede apuntar a una categoría
-  // ya archivada y aun así debe contar para el mes en que ocurrió.
-  const { data: categories } = useCategories({ type: 'expense' });
-  const {
-    data: txPage,
-    isLoading: txLoading,
-    isError: txError,
-    refetch: refetchTx,
-  } = useTransactions({ from: range.from, to: range.to, type: 'expense', page: 1, limit: 200 });
+  const { data: progress, isLoading, isError, refetch } = useBudgetPlanProgress(month);
 
   const [needsPct, setNeedsPct] = useState(DEFAULT_BUDGET_PLAN.needsPct);
   const [wantsPct, setWantsPct] = useState(DEFAULT_BUDGET_PLAN.wantsPct);
   const [savingsPct, setSavingsPct] = useState(DEFAULT_BUDGET_PLAN.savingsPct);
 
-  // `plan` es undefined mientras carga, null si el mes no tiene plan
-  // guardado (404) y un objeto si sí lo tiene. Solo pisamos el form una vez
-  // se sabe cuál de los dos casos aplica, para no parpadear valores.
+  // Solo pisamos el form una vez se sabe si el mes tiene plan guardado o
+  // no, para no parpadear valores mientras carga.
   useEffect(() => {
-    if (plan) {
-      setNeedsPct(plan.needsPct);
-      setWantsPct(plan.wantsPct);
-      setSavingsPct(plan.savingsPct);
-    } else if (plan === null) {
+    if (!progress) return;
+    if (progress.targetPct) {
+      setNeedsPct(progress.targetPct.needs);
+      setWantsPct(progress.targetPct.wants);
+      setSavingsPct(progress.targetPct.savings);
+    } else {
       setNeedsPct(DEFAULT_BUDGET_PLAN.needsPct);
       setWantsPct(DEFAULT_BUDGET_PLAN.wantsPct);
       setSavingsPct(DEFAULT_BUDGET_PLAN.savingsPct);
     }
-  }, [plan, month]);
+  }, [progress, month]);
 
   const saveBudgetPlan = useSaveBudgetPlan(month);
 
-  const actual = useMemo(
-    () => computeActualTotals(txPage?.data ?? [], categories ?? []),
-    [txPage, categories],
+  const targetByGroup: Record<BudgetGroup, number> = useMemo(
+    () => ({ needs: needsPct, wants: wantsPct, savings: savingsPct }),
+    [needsPct, wantsPct, savingsPct],
   );
-
-  const targetByGroup: Record<BudgetGroup, number> = {
-    needs: needsPct,
-    wants: wantsPct,
-    savings: savingsPct,
-  };
   const setPctByGroup: Record<BudgetGroup, (v: number) => void> = {
     needs: setNeedsPct,
     wants: setWantsPct,
@@ -118,9 +63,6 @@ export default function Plan() {
     if (!isValidSum) return;
     saveBudgetPlan.mutate({ needsPct, wantsPct, savingsPct });
   }
-
-  const isLoading = planLoading || txLoading;
-  const isError = planError || txError;
 
   return (
     <div className="flex flex-col gap-5">
@@ -151,13 +93,8 @@ export default function Plan() {
       </div>
 
       {isError ? (
-        <ErrorState
-          onRetry={() => {
-            refetchPlan();
-            refetchTx();
-          }}
-        />
-      ) : isLoading ? (
+        <ErrorState onRetry={() => refetch()} />
+      ) : isLoading || !progress ? (
         <div className="flex flex-col gap-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-14 w-full" />
@@ -165,8 +102,8 @@ export default function Plan() {
         </div>
       ) : (
         <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          {actual.total === 0 ? (
-            <p className="text-sm text-slate-400">Sin gastos registrados este mes.</p>
+          {progress.incomeVES === 0 ? (
+            <p className="text-sm text-slate-400">Sin ingresos registrados este mes: el % real se mide sobre el ingreso.</p>
           ) : (
             <>
               {BUDGET_GROUPS.map((g) => (
@@ -175,23 +112,23 @@ export default function Plan() {
                   label={BUDGET_GROUP_LABEL[g]}
                   color={GROUP_COLOR[g]}
                   target={targetByGroup[g]}
-                  actual={(actual[g] / actual.total) * 100}
+                  actual={progress.groups[g].actualPct}
                 />
               ))}
 
-              {actual.unclassified > 0 && (
+              {progress.unclassified.amountVES > 0 && (
                 <div>
                   <div className="mb-1 flex items-center justify-between text-sm">
                     <span className="font-medium text-slate-500">Sin categorizar</span>
                     <span className="text-xs text-slate-400">
-                      {formatCurrency(actual.unclassified, 'VES')} ·{' '}
-                      {((actual.unclassified / actual.total) * 100).toFixed(0)}%
+                      {formatCurrency(progress.unclassified.amountVES, 'VES')} ·{' '}
+                      {progress.unclassified.actualPct.toFixed(0)}%
                     </span>
                   </div>
                   <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
                     <div
                       className="h-full rounded-full bg-slate-300"
-                      style={{ width: `${(actual.unclassified / actual.total) * 100}%` }}
+                      style={{ width: `${Math.min(progress.unclassified.actualPct, 100)}%` }}
                     />
                   </div>
                   <p className="mt-1 text-xs text-slate-400">

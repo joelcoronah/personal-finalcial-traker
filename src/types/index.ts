@@ -202,6 +202,30 @@ export interface BudgetPlanInput {
 /** Objetivo clásico 50/30/20, usado como punto de partida cuando un mes aún no tiene plan guardado. */
 export const DEFAULT_BUDGET_PLAN: BudgetPlanInput = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 
+/** Monto real de un grupo y qué % representa sobre el ingreso del mes. */
+export interface BudgetGroupProgress {
+  amountVES: number;
+  actualPct: number;
+}
+
+/**
+ * Meta vs. real de un mes, ya calculado por el backend en
+ * GET /budget-plans/:month/progress. actualPct de cada grupo (y de
+ * unclassified) es % sobre incomeVES, no sobre el gasto total — así es como
+ * se mide la regla 50/30/20 (cuánto de lo que entró se fue a cada grupo).
+ * targetPct es null si el mes no tiene plan guardado (hasPlan: false); en
+ * ese caso el frontend debe caer en DEFAULT_BUDGET_PLAN para el formulario.
+ */
+export interface BudgetPlanProgress {
+  month: string;
+  hasPlan: boolean;
+  targetPct: { needs: number; wants: number; savings: number } | null;
+  incomeVES: number;
+  expenseVES: number;
+  groups: Record<BudgetGroup, BudgetGroupProgress>;
+  unclassified: BudgetGroupProgress;
+}
+
 /** Totales en las 4 monedas de referencia. */
 export type CurrencyTotals = Record<Currency, number>;
 

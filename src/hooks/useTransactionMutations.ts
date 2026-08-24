@@ -8,15 +8,17 @@ import {
 import type { TransactionInput } from '../types';
 
 /**
- * Todas las mutaciones invalidan 'transactions' y 'summary' para que las
- * listas, el dashboard y los reportes reflejen el cambio de inmediato.
- * No invalidan 'rates': el snapshot ya quedó fijo en el backend.
+ * Todas las mutaciones invalidan 'transactions', 'summary' y 'budget-plans'
+ * (el /progress de Plan del mes se deriva de las transacciones del mes) para
+ * que las listas, el dashboard y los reportes reflejen el cambio de
+ * inmediato. No invalidan 'rates': el snapshot ya quedó fijo en el backend.
  */
 function useInvalidateAfterMutation() {
   const queryClient = useQueryClient();
   return () => {
     queryClient.invalidateQueries({ queryKey: ['transactions'] });
     queryClient.invalidateQueries({ queryKey: ['summary'] });
+    queryClient.invalidateQueries({ queryKey: ['budget-plans'] });
   };
 }
 
