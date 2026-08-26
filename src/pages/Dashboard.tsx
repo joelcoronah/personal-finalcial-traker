@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { RatesCard } from '../components/rates/RatesCard';
@@ -6,9 +7,10 @@ import { SavingsCard } from '../components/dashboard/SavingsCard';
 import { DebtSummaryCard } from '../components/debts/DebtSummaryCard';
 import { CategoryChart } from '../components/dashboard/CategoryChart';
 import { RecentTransactions } from '../components/dashboard/RecentTransactions';
+import { CurrencySwitcher } from '../components/common/CurrencySwitcher';
 import { useSummary } from '../hooks/useSummary';
 import { getCurrentMonthRange } from '../lib/dates';
-import type { Summary } from '../types';
+import type { Currency, Summary } from '../types';
 
 const ZERO_TOTALS = { VES: 0, USD: 0, EUR: 0, USDT: 0 };
 
@@ -46,6 +48,7 @@ function buildSummaryRows(summary: Summary | undefined): StatRow[] {
 export default function Dashboard() {
   const { from, to } = getCurrentMonthRange();
   const { data: summary, isLoading, isError, refetch } = useSummary(from, to);
+  const [currency, setCurrency] = useState<Currency>('USDT');
 
   return (
     <div className="flex flex-col gap-5">
@@ -74,11 +77,17 @@ export default function Dashboard() {
         </button>
       ) : (
         <>
-          <SummaryCards rows={buildSummaryRows(summary)} isLoading={isLoading} />
+          <CurrencySwitcher value={currency} onChange={setCurrency} />
+
+          <SummaryCards rows={buildSummaryRows(summary)} isLoading={isLoading} currency={currency} />
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <SavingsCard savingsAccumulated={summary?.savingsAccumulated} isLoading={isLoading} />
-            <DebtSummaryCard debt={summary?.debt} isLoading={isLoading} />
+            <SavingsCard
+              savingsAccumulated={summary?.savingsAccumulated}
+              isLoading={isLoading}
+              currency={currency}
+            />
+            <DebtSummaryCard debt={summary?.debt} isLoading={isLoading} currency={currency} />
           </div>
         </>
       )}

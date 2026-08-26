@@ -1,11 +1,12 @@
 import { PiggyBank } from 'lucide-react';
-import type { CurrencyTotals } from '../../types';
-import { formatMultiCurrency } from '../../lib/currency';
+import type { Currency, CurrencyTotals } from '../../types';
+import { formatCurrency } from '../../lib/currency';
 import { Skeleton } from '../common/Skeleton';
 
 interface SavingsCardProps {
   savingsAccumulated?: CurrencyTotals;
   isLoading: boolean;
+  currency: Currency;
 }
 
 /**
@@ -14,7 +15,7 @@ interface SavingsCardProps {
  * así que lo dejamos explícito acá en vez de dar a entender que es un saldo
  * disponible que se puede gastar.
  */
-export function SavingsCard({ savingsAccumulated, isLoading }: SavingsCardProps) {
+export function SavingsCard({ savingsAccumulated, isLoading, currency }: SavingsCardProps) {
   return (
     <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 shadow-sm">
       <div className="flex items-center gap-2">
@@ -28,7 +29,7 @@ export function SavingsCard({ savingsAccumulated, isLoading }: SavingsCardProps)
         <Skeleton className="mt-3 h-5 w-2/3" />
       ) : (
         <p className="mt-2 text-sm font-medium text-emerald-700">
-          {formatMultiCurrency(savingsAccumulated)}
+          {formatCurrency(savingsAccumulated[currency], currency)}
         </p>
       )}
 

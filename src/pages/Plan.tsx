@@ -8,6 +8,7 @@ import { SummaryCards, type StatRow } from '../components/dashboard/SummaryCards
 import { SavingsCard } from '../components/dashboard/SavingsCard';
 import { DebtSummaryCard } from '../components/debts/DebtSummaryCard';
 import { CategoryEnvelopes } from '../components/plan/CategoryEnvelopes';
+import { CurrencySwitcher } from '../components/common/CurrencySwitcher';
 import { useBudgetPlanProgress } from '../hooks/useBudgetPlan';
 import { useSaveBudgetPlan } from '../hooks/useBudgetPlanMutations';
 import { currentMonthKey, formatMonthLabel, shiftMonthKey } from '../lib/dates';
@@ -18,6 +19,7 @@ import {
   DEFAULT_BUDGET_PLAN,
   type BudgetGroup,
   type BudgetPlanProgress,
+  type Currency,
   type CurrencyTotals,
 } from '../types';
 
@@ -52,6 +54,7 @@ const GROUP_COLOR: Record<BudgetGroup, string> = {
 
 export default function Plan() {
   const [month, setMonth] = useState(currentMonthKey());
+  const [currency, setCurrency] = useState<Currency>('USDT');
 
   const { data: progress, isLoading, isError, refetch } = useBudgetPlanProgress(month);
 
@@ -133,11 +136,13 @@ export default function Plan() {
         </div>
       ) : (
         <>
-          <SummaryCards rows={buildSummaryRows(progress)} isLoading={false} />
+          <CurrencySwitcher value={currency} onChange={setCurrency} />
+
+          <SummaryCards rows={buildSummaryRows(progress)} isLoading={false} currency={currency} />
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <SavingsCard savingsAccumulated={progress.savingsAccumulated} isLoading={false} />
-            <DebtSummaryCard debt={progress.debt} isLoading={false} />
+            <SavingsCard savingsAccumulated={progress.savingsAccumulated} isLoading={false} currency={currency} />
+            <DebtSummaryCard debt={progress.debt} isLoading={false} currency={currency} />
           </div>
 
           <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -153,6 +158,7 @@ export default function Plan() {
                       target={targetByGroup[g]}
                       actual={progress.groups[g].actualPct}
                       amount={progress.groups[g].amount}
+                      currency={currency}
                       // El backend ya la calcula cuando hay plan guardado; si no
                       // (hasPlan: false), caemos en el mismo cálculo % × ingreso
                       // que ya usa el marcador de la barra.
@@ -170,6 +176,7 @@ export default function Plan() {
                       month={month}
                       byCategory={progress.assignment.byCategory}
                       color={GROUP_COLOR[g]}
+                      currency={currency}
                     />
                   </div>
                 ))}
@@ -181,7 +188,7 @@ export default function Plan() {
                       <span className="text-xs text-slate-400">{progress.unclassified.actualPct.toFixed(0)}%</span>
                     </div>
                     <p className="mb-1 text-xs text-slate-400">
-                      {formatMultiCurrency(progress.unclassified.amount)}
+                      {formatCurrency(progress.unclassified.amount[currency], currency)}
                     </p>
                     <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
                       <div
@@ -261,6 +268,7 @@ function GroupBar({
   actual,
   amount,
   targetAmount,
+  currency,
 }: {
   label: string;
   color: string;
@@ -269,6 +277,7 @@ function GroupBar({
   amount: CurrencyTotals;
   /** Meta en monto ya calculada por el backend; null si el mes no tiene plan guardado. */
   targetAmount: CurrencyTotals | null;
+  currency: Currency;
 }) {
   return (
     <div>
@@ -286,14 +295,13 @@ function GroupBar({
         <span>
           Objetivo:{' '}
           <span className="font-medium text-slate-600">
-            {targetAmount ? formatCurrency(targetAmount.VES, 'VES') : '—'}
+            {targetAmount ? formatCurrency(targetAmount[currency], currency) : '—'}
           </span>
         </span>
         <span>
-          Real: <span className="font-medium text-slate-600">{formatCurrency(amount.VES, 'VES')}</span>
+          Real: <span className="font-medium text-slate-600">{formatCurrency(amount[currency], currency)}</span>
         </span>
       </div>
-      <p className="mb-1 text-xs text-slate-400">{formatMultiCurrency(amount)}</p>
       <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
         <div
           className="h-full rounded-full transition-all"

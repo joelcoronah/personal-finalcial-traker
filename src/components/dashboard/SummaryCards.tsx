@@ -1,5 +1,4 @@
-import { CURRENCIES } from '../../types';
-import type { CurrencyTotals } from '../../types';
+import type { Currency, CurrencyTotals } from '../../types';
 import { formatCurrencyCompact } from '../../lib/currency';
 import { Skeleton } from '../common/Skeleton';
 
@@ -15,6 +14,8 @@ export interface StatRow {
 interface SummaryCardsProps {
   rows: StatRow[];
   isLoading: boolean;
+  /** Moneda elegida en el CurrencySwitcher de la página; una sola tarjeta muestra solo esa moneda. */
+  currency: Currency;
 }
 
 const TONE_CLASS: Record<NonNullable<StatRow['tone']>, string> = {
@@ -25,45 +26,39 @@ const TONE_CLASS: Record<NonNullable<StatRow['tone']>, string> = {
 };
 
 /**
- * Grilla de tarjetas por moneda (una tarjeta por cada VES/USD/EUR/USDT), cada
- * una apilando las mismas filas de estadísticas. Generaliza lo que antes era
- * un componente fijo a Ingresos/Gastos/Balance para poder reusarlo en
+ * Tarjeta con las filas de estadísticas del período, en la moneda elegida
+ * por el usuario (ver CurrencySwitcher). Generaliza lo que antes era un
+ * componente fijo a Ingresos/Gastos/Balance para poder reusarlo en
  * Dashboard y Plan del mes con distintos conjuntos de métricas.
  */
-export function SummaryCards({ rows, isLoading }: SummaryCardsProps) {
+export function SummaryCards({ rows, isLoading, currency }: SummaryCardsProps) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {CURRENCIES.map((currency) => (
-        <div key={currency} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            {currency}
-          </p>
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{currency}</p>
 
-          {isLoading ? (
-            <div className="mt-2 flex flex-col gap-1.5">
-              {rows.map((row) => (
-                <Skeleton key={row.key} className="h-4 w-3/4" />
-              ))}
-            </div>
-          ) : (
-            <div className="mt-2 flex flex-col gap-1 text-sm">
-              {rows.map((row) => {
-                const negative = row.value[currency] < 0;
-                const tone = row.tone === 'warning' && negative ? 'warning' : (row.tone ?? 'neutral');
-                return (
-                  <Row
-                    key={row.key}
-                    icon={row.icon}
-                    label={row.label}
-                    value={formatCurrencyCompact(row.value[currency], currency)}
-                    className={TONE_CLASS[tone]}
-                  />
-                );
-              })}
-            </div>
-          )}
+      {isLoading ? (
+        <div className="mt-2 flex flex-col gap-1.5">
+          {rows.map((row) => (
+            <Skeleton key={row.key} className="h-4 w-3/4" />
+          ))}
         </div>
-      ))}
+      ) : (
+        <div className="mt-2 flex flex-col gap-1 text-sm">
+          {rows.map((row) => {
+            const negative = row.value[currency] < 0;
+            const tone = row.tone === 'warning' && negative ? 'warning' : (row.tone ?? 'neutral');
+            return (
+              <Row
+                key={row.key}
+                icon={row.icon}
+                label={row.label}
+                value={formatCurrencyCompact(row.value[currency], currency)}
+                className={TONE_CLASS[tone]}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -3,13 +3,14 @@ import { ChevronDown, Pencil, Plus, TriangleAlert } from 'lucide-react';
 import { useCategories } from '../../hooks/useCategories';
 import { formatCurrency } from '../../lib/currency';
 import { CategoryEnvelopeModal } from './CategoryEnvelopeModal';
-import type { BudgetGroup, CategoryAssignmentProgress } from '../../types';
+import type { BudgetGroup, CategoryAssignmentProgress, Currency } from '../../types';
 
 interface CategoryEnvelopesProps {
   group: BudgetGroup;
   month: string;
   byCategory: CategoryAssignmentProgress[];
   color: string;
+  currency: Currency;
 }
 
 /**
@@ -18,7 +19,7 @@ interface CategoryEnvelopesProps {
  * por el backend (assignment.byCategory de /progress); acá solo se filtra
  * por grupo y se agrega la UI para editar/crear/borrar sobres.
  */
-export function CategoryEnvelopes({ group, month, byCategory, color }: CategoryEnvelopesProps) {
+export function CategoryEnvelopes({ group, month, byCategory, color, currency }: CategoryEnvelopesProps) {
   const [expanded, setExpanded] = useState(false);
   const [modalState, setModalState] = useState<
     { mode: 'edit'; categoryId: string; categoryName: string; assignedVES: number } | { mode: 'create' } | null
@@ -55,6 +56,7 @@ export function CategoryEnvelopes({ group, month, byCategory, color }: CategoryE
             <CategoryEnvelopeRow
               key={row.categoryId}
               row={row}
+              currency={currency}
               onEdit={() =>
                 setModalState({
                   mode: 'edit',
@@ -92,11 +94,16 @@ export function CategoryEnvelopes({ group, month, byCategory, color }: CategoryE
 
 function CategoryEnvelopeRow({
   row,
+  currency,
   onEdit,
 }: {
   row: CategoryAssignmentProgress;
+  currency: Currency;
   onEdit: () => void;
 }) {
+  // El signo/ratio es el mismo en cualquier moneda (todas se derivan de la
+  // misma conversión), así que la lógica de negocio se evalúa en VES y solo
+  // el texto se formatea en la moneda elegida.
   const hasEnvelope = row.assigned.VES > 0;
   const isUnbudgeted = !hasEnvelope && row.spent.VES !== 0;
   const isOverspent = hasEnvelope && row.available.VES < 0;
@@ -124,13 +131,13 @@ function CategoryEnvelopeRow({
       </div>
       <div className="flex items-center justify-between text-[11px] text-slate-400">
         <span>
-          Gastado {formatCurrency(row.spent.VES, 'VES')}
-          {hasEnvelope && <> de {formatCurrency(row.assigned.VES, 'VES')}</>}
+          Gastado {formatCurrency(row.spent[currency], currency)}
+          {hasEnvelope && <> de {formatCurrency(row.assigned[currency], currency)}</>}
         </span>
         {hasEnvelope && (
           <span className={isOverspent ? 'font-medium text-red-500' : ''}>
             {isOverspent ? 'Excedido: ' : 'Disponible: '}
-            {formatCurrency(Math.abs(row.available.VES), 'VES')}
+            {formatCurrency(Math.abs(row.available[currency]), currency)}
           </span>
         )}
       </div>

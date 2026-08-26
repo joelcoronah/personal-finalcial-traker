@@ -1,16 +1,17 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Landmark } from 'lucide-react';
-import type { DebtSummary } from '../../types';
-import { formatMultiCurrency } from '../../lib/currency';
+import type { Currency, DebtSummary } from '../../types';
+import { formatCurrency } from '../../lib/currency';
 import { Skeleton } from '../common/Skeleton';
 
 interface DebtSummaryCardProps {
   debt?: DebtSummary;
   isLoading: boolean;
+  currency: Currency;
 }
 
 /** Resumen compacto de deudas para Dashboard y Plan; el detalle vive en /deudas. */
-export function DebtSummaryCard({ debt, isLoading }: DebtSummaryCardProps) {
+export function DebtSummaryCard({ debt, isLoading, currency }: DebtSummaryCardProps) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
@@ -39,13 +40,13 @@ export function DebtSummaryCard({ debt, isLoading }: DebtSummaryCardProps) {
           <div className="flex items-center justify-between">
             <span className="text-slate-500">Saldo pendiente</span>
             <span className="font-semibold text-slate-700">
-              {formatMultiCurrency(debt.totalRemainingDebt)}
+              {formatCurrency(debt.totalRemainingDebt[currency], currency)}
             </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-slate-500">Aporte del mes</span>
             <span className="font-medium text-slate-600">
-              {formatMultiCurrency(debt.monthContribution)}
+              {formatCurrency(debt.monthContribution[currency], currency)}
             </span>
           </div>
           <div className="flex items-center justify-between">
