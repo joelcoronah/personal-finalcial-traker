@@ -3,12 +3,15 @@ import { PeriodSelector } from '../components/reports/PeriodSelector';
 import { TotalsGrid } from '../components/reports/TotalsGrid';
 import { CategoryBreakdown } from '../components/reports/CategoryBreakdown';
 import { ErrorState } from '../components/common/ErrorState';
+import { CurrencySwitcher } from '../components/common/CurrencySwitcher';
 import { useSummary } from '../hooks/useSummary';
 import { getRangeForPreset, type PeriodPreset } from '../lib/dates';
+import type { Currency } from '../types';
 
 export default function Reports() {
   const [preset, setPreset] = useState<PeriodPreset>('current-month');
   const [customRange, setCustomRange] = useState(getRangeForPreset('current-month'));
+  const [currency, setCurrency] = useState<Currency>('USDT');
 
   const range = preset === 'custom' ? customRange : getRangeForPreset(preset);
   const { data: summary, isLoading, isError, refetch } = useSummary(range.from, range.to);
@@ -37,7 +40,9 @@ export default function Reports() {
         <ErrorState onRetry={refetch} />
       ) : (
         <>
-          <TotalsGrid summary={summary} isLoading={isLoading} />
+          <CurrencySwitcher value={currency} onChange={setCurrency} />
+
+          <TotalsGrid summary={summary} isLoading={isLoading} currency={currency} />
 
           <div>
             <h2 className="mb-2 text-sm font-semibold text-slate-700">Desglose por categoría</h2>

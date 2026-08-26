@@ -40,7 +40,7 @@ export function CategoryEnvelopeModal({
   creatableCategories,
 }: CategoryEnvelopeModalProps) {
   const [categoryId, setCategoryId] = useState(editing?.categoryId ?? '');
-  const [amount, setAmount] = useState(editing ? String(editing.assignedUSDT) : '');
+  const [amount, setAmount] = useState(editing ? editing.assignedUSDT.toFixed(2) : '');
 
   const saveAssignment = useSaveCategoryAssignment(month);
   const deleteAssignment = useDeleteCategoryAssignment(month);
@@ -51,7 +51,11 @@ export function CategoryEnvelopeModal({
   useEffect(() => {
     if (!open) return;
     setCategoryId(editing?.categoryId ?? '');
-    setAmount(editing ? String(editing.assignedUSDT) : '');
+    // .toFixed(2): assignedUSDT es VES/tasa calculado por el backend y puede
+    // llegar con ruido de punto flotante (ej. 299.99999999999994) — se
+    // redondea a centavos antes de mostrarlo, igual que el resto de montos
+    // en la app (formatCurrency ya trabaja con 2 decimales).
+    setAmount(editing ? editing.assignedUSDT.toFixed(2) : '');
     // Solo re-ejecutar al abrir o al cambiar de categoría editada, no en
     // cada render (editing/creatableCategories son objetos/arrays nuevos en
     // cada render del padre y pisarían lo que el usuario esté escribiendo).
