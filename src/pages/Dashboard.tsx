@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { RatesCard } from '../components/rates/RatesCard';
-import { SummaryCards, type StatRow } from '../components/dashboard/SummaryCards';
+import { SummaryCards, type SummaryStats } from '../components/dashboard/SummaryCards';
 import { SavingsCard } from '../components/dashboard/SavingsCard';
 import { DebtSummaryCard } from '../components/debts/DebtSummaryCard';
 import { CategoryChart } from '../components/dashboard/CategoryChart';
@@ -14,35 +14,18 @@ import type { Currency, Summary } from '../types';
 
 const ZERO_TOTALS = { VES: 0, USD: 0, EUR: 0, USDT: 0 };
 
-// Devuelve las mismas 6 filas (con ceros de relleno) aunque `summary`
-// todavía no haya llegado, para que SummaryCards sepa cuántos renglones de
-// skeleton dibujar mientras carga en vez de mostrar tarjetas vacías.
-function buildSummaryRows(summary: Summary | undefined): StatRow[] {
-  return [
-    { key: 'income', label: 'Ingresos totales', value: summary?.totals.income ?? ZERO_TOTALS, tone: 'positive' },
-    {
-      key: 'debtContribution',
-      label: 'Aporte a deudas',
-      value: summary?.debt.monthContribution ?? ZERO_TOTALS,
-    },
-    {
-      key: 'assigned',
-      label: 'Asignado para presupuesto',
-      value: summary?.assignment.totalAssigned ?? ZERO_TOTALS,
-    },
-    {
-      key: 'readyToAssign',
-      label: 'Pendiente por asignar',
-      value: summary?.assignment.readyToAssign ?? ZERO_TOTALS,
-      tone: 'warning',
-    },
-    {
-      key: 'availableToSpend',
-      label: 'Disponible para gastar',
-      value: summary?.assignment.availableToSpend ?? ZERO_TOTALS,
-    },
-    { key: 'expense', label: 'Gastado hasta ahora', value: summary?.totals.expense ?? ZERO_TOTALS, tone: 'negative' },
-  ];
+// Devuelve las mismas 6 métricas (con ceros de relleno) aunque `summary`
+// todavía no haya llegado, para que SummaryCards siempre reciba la forma
+// completa mientras carga en vez de tarjetas vacías.
+function buildSummaryStats(summary: Summary | undefined): SummaryStats {
+  return {
+    income: summary?.totals.income ?? ZERO_TOTALS,
+    expense: summary?.totals.expense ?? ZERO_TOTALS,
+    debtContribution: summary?.debt.monthContribution ?? ZERO_TOTALS,
+    assigned: summary?.assignment.totalAssigned ?? ZERO_TOTALS,
+    readyToAssign: summary?.assignment.readyToAssign ?? ZERO_TOTALS,
+    availableToSpend: summary?.assignment.availableToSpend ?? ZERO_TOTALS,
+  };
 }
 
 export default function Dashboard() {
@@ -79,7 +62,7 @@ export default function Dashboard() {
         <>
           <CurrencySwitcher value={currency} onChange={setCurrency} />
 
-          <SummaryCards rows={buildSummaryRows(summary)} isLoading={isLoading} currency={currency} />
+          <SummaryCards {...buildSummaryStats(summary)} isLoading={isLoading} currency={currency} />
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <SavingsCard

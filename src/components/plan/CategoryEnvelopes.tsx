@@ -22,7 +22,7 @@ interface CategoryEnvelopesProps {
 export function CategoryEnvelopes({ group, month, byCategory, color, currency }: CategoryEnvelopesProps) {
   const [expanded, setExpanded] = useState(false);
   const [modalState, setModalState] = useState<
-    { mode: 'edit'; categoryId: string; categoryName: string; assignedVES: number } | { mode: 'create' } | null
+    { mode: 'edit'; categoryId: string; categoryName: string; assignedUSDT: number } | { mode: 'create' } | null
   >(null);
 
   const rows = byCategory.filter((c) => c.budgetGroup === group);
@@ -62,7 +62,7 @@ export function CategoryEnvelopes({ group, month, byCategory, color, currency }:
                   mode: 'edit',
                   categoryId: row.categoryId,
                   categoryName: row.categoryName,
-                  assignedVES: row.assigned.VES,
+                  assignedUSDT: row.assigned.USDT,
                 })
               }
             />

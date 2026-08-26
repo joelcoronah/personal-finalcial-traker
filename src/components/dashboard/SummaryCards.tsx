@@ -1,86 +1,154 @@
 import type { Currency, CurrencyTotals } from '../../types';
-import { formatCurrencyCompact } from '../../lib/currency';
+import { formatCurrency } from '../../lib/currency';
 import { Skeleton } from '../common/Skeleton';
 
-export interface StatRow {
-  key: string;
-  label: string;
-  value: CurrencyTotals;
-  icon?: React.ReactNode;
-  /** 'warning' resalta en rojo (ej. "Pendiente por asignar" negativo = sobre-asignado). */
-  tone?: 'positive' | 'negative' | 'neutral' | 'warning';
+export interface SummaryStats {
+  income: CurrencyTotals;
+  expense: CurrencyTotals;
+  debtContribution: CurrencyTotals;
+  assigned: CurrencyTotals;
+  readyToAssign: CurrencyTotals;
+  availableToSpend: CurrencyTotals;
 }
 
-interface SummaryCardsProps {
-  rows: StatRow[];
+interface SummaryCardsProps extends SummaryStats {
   isLoading: boolean;
-  /** Moneda elegida en el CurrencySwitcher de la página; una sola tarjeta muestra solo esa moneda. */
+  /** Moneda elegida en el CurrencySwitcher de la página. */
   currency: Currency;
 }
 
-const TONE_CLASS: Record<NonNullable<StatRow['tone']>, string> = {
-  positive: 'text-emerald-600',
-  negative: 'text-red-500',
-  warning: 'text-red-500',
-  neutral: 'text-slate-700',
-};
-
 /**
- * Tarjeta con las filas de estadísticas del período, en la moneda elegida
- * por el usuario (ver CurrencySwitcher). Generaliza lo que antes era un
- * componente fijo a Ingresos/Gastos/Balance para poder reusarlo en
- * Dashboard y Plan del mes con distintos conjuntos de métricas.
+ * Tarjeta de resumen del período, en la moneda elegida por el usuario. La
+ * jerarquía visual es intencional: Ingresos totales y Disponible para
+ * gastar son las cifras que más se consultan de un vistazo, así que van
+ * arriba y grandes; Aporte a deudas/Asignado/Pendiente por asignar son de
+ * apoyo y van en una lista compacta; Gastado hasta ahora cierra la tarjeta
+ * con su propia barra de progreso sobre el ingreso.
  */
-export function SummaryCards({ rows, isLoading, currency }: SummaryCardsProps) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{currency}</p>
+export function SummaryCards({
+  currency,
+  isLoading,
+  income,
+  expense,
+  debtContribution,
+  assigned,
+  readyToAssign,
+  availableToSpend,
+}: SummaryCardsProps) {
+  const incomeValue = income[currency];
+  const expenseValue = expense[currency];
+  const spentPct = incomeValue > 0 ? Math.min((expenseValue / incomeValue) * 100, 100) : 0;
+  const isOverAssigned = readyToAssign[currency] < 0;
+  const isOverspent = availableToSpend[currency] < 0;
 
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="grid grid-cols-2 gap-4">
+        <Hero
+          label="Ingresos totales"
+          value={incomeValue}
+          currency={currency}
+          isLoading={isLoading}
+          tone="text-emerald-600"
+        />
+        <Hero
+          label="Disponible para gastar"
+          value={availableToSpend[currency]}
+          currency={currency}
+          isLoading={isLoading}
+          tone={isOverspent ? 'text-red-500' : 'text-slate-800'}
+        />
+      </div>
+
+      <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-3 text-sm">
+        <Row label="Aporte a deudas" value={debtContribution[currency]} currency={currency} isLoading={isLoading} />
+        <Row
+          label="Asignado para presupuesto"
+          value={assigned[currency]}
+          currency={currency}
+          isLoading={isLoading}
+        />
+        <Row
+          label="Pendiente por asignar"
+          value={readyToAssign[currency]}
+          currency={currency}
+          isLoading={isLoading}
+          valueClassName={isOverAssigned ? 'text-red-500' : undefined}
+        />
+      </div>
+
+      <div className="mt-4 border-t border-slate-100 pt-3">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-medium text-slate-500">Gastado hasta ahora</span>
+          {isLoading ? (
+            <Skeleton className="h-5 w-20" />
+          ) : (
+            <span className="font-semibold text-red-500">{formatCurrency(expenseValue, currency)}</span>
+          )}
+        </div>
+        {!isLoading && (
+          <>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-red-400" style={{ width: `${spentPct}%` }} />
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              {spentPct.toFixed(0)}% de {formatCurrency(incomeValue, currency)} de ingresos
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Hero({
+  label,
+  value,
+  currency,
+  isLoading,
+  tone,
+}: {
+  label: string;
+  value: number;
+  currency: Currency;
+  isLoading: boolean;
+  tone: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-xs font-medium text-slate-400">{label}</p>
       {isLoading ? (
-        <div className="mt-2 flex flex-col gap-1.5">
-          {rows.map((row) => (
-            <Skeleton key={row.key} className="h-4 w-3/4" />
-          ))}
-        </div>
+        <Skeleton className="mt-1.5 h-7 w-24" />
       ) : (
-        <div className="mt-2 flex flex-col gap-1 text-sm">
-          {rows.map((row) => {
-            const negative = row.value[currency] < 0;
-            const tone = row.tone === 'warning' && negative ? 'warning' : (row.tone ?? 'neutral');
-            return (
-              <Row
-                key={row.key}
-                icon={row.icon}
-                label={row.label}
-                value={formatCurrencyCompact(row.value[currency], currency)}
-                className={TONE_CLASS[tone]}
-              />
-            );
-          })}
-        </div>
+        <p className={`mt-0.5 truncate text-2xl font-bold ${tone}`}>{formatCurrency(value, currency)}</p>
       )}
     </div>
   );
 }
 
 function Row({
-  icon,
   label,
   value,
-  className,
+  currency,
+  isLoading,
+  valueClassName,
 }: {
-  icon?: React.ReactNode;
   label: string;
-  value: string;
-  className?: string;
+  value: number;
+  currency: Currency;
+  isLoading: boolean;
+  valueClassName?: string;
 }) {
   return (
-    <span className={`flex items-center justify-between gap-2 truncate ${className ?? ''}`} title={label}>
-      <span className="flex min-w-0 items-center gap-1 truncate text-slate-500">
-        {icon}
-        <span className="truncate">{label}</span>
-      </span>
-      <span className="shrink-0 font-medium">{value}</span>
-    </span>
+    <div className="flex items-center justify-between gap-2">
+      <span className="truncate text-slate-500">{label}</span>
+      {isLoading ? (
+        <Skeleton className="h-4 w-16 shrink-0" />
+      ) : (
+        <span className={`shrink-0 font-medium text-slate-700 ${valueClassName ?? ''}`}>
+          {formatCurrency(value, currency)}
+        </span>
+      )}
+    </div>
   );
 }

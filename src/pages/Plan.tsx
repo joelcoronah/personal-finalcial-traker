@@ -4,7 +4,7 @@ import clsx from 'clsx';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ErrorState } from '../components/common/ErrorState';
 import { Skeleton } from '../components/common/Skeleton';
-import { SummaryCards, type StatRow } from '../components/dashboard/SummaryCards';
+import { SummaryCards, type SummaryStats } from '../components/dashboard/SummaryCards';
 import { SavingsCard } from '../components/dashboard/SavingsCard';
 import { DebtSummaryCard } from '../components/debts/DebtSummaryCard';
 import { CategoryEnvelopes } from '../components/plan/CategoryEnvelopes';
@@ -23,24 +23,15 @@ import {
   type CurrencyTotals,
 } from '../types';
 
-function buildSummaryRows(progress: BudgetPlanProgress): StatRow[] {
-  return [
-    { key: 'income', label: 'Ingresos totales', value: progress.income, tone: 'positive' },
-    { key: 'debtContribution', label: 'Aporte a deudas', value: progress.debt.monthContribution },
-    { key: 'assigned', label: 'Asignado para presupuesto', value: progress.assignment.totalAssigned },
-    {
-      key: 'readyToAssign',
-      label: 'Pendiente por asignar',
-      value: progress.assignment.readyToAssign,
-      tone: 'warning',
-    },
-    {
-      key: 'availableToSpend',
-      label: 'Disponible para gastar',
-      value: progress.assignment.availableToSpend,
-    },
-    { key: 'expense', label: 'Gastado hasta ahora', value: progress.expense, tone: 'negative' },
-  ];
+function buildSummaryStats(progress: BudgetPlanProgress): SummaryStats {
+  return {
+    income: progress.income,
+    expense: progress.expense,
+    debtContribution: progress.debt.monthContribution,
+    assigned: progress.assignment.totalAssigned,
+    readyToAssign: progress.assignment.readyToAssign,
+    availableToSpend: progress.assignment.availableToSpend,
+  };
 }
 
 // El plan solo se mide contra gastos: las 3 categorías del 50/30/20
@@ -138,7 +129,7 @@ export default function Plan() {
         <>
           <CurrencySwitcher value={currency} onChange={setCurrency} />
 
-          <SummaryCards rows={buildSummaryRows(progress)} isLoading={false} currency={currency} />
+          <SummaryCards {...buildSummaryStats(progress)} isLoading={false} currency={currency} />
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <SavingsCard savingsAccumulated={progress.savingsAccumulated} isLoading={false} currency={currency} />
