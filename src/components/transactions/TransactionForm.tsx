@@ -14,7 +14,15 @@ import { CURRENCY_SYMBOL, formatCurrency, toVES } from '../../lib/currency';
 import { todayISO } from '../../lib/dates';
 import { useRates } from '../../hooks/useRates';
 import { useCategories } from '../../hooks/useCategories';
+import { useDebts } from '../../hooks/useDebts';
 import { ImageDropzone } from './ImageDropzone';
+
+/** Heurística para mostrar el selector de deuda sin obligar al usuario a
+ * pasar por una categoría exacta: cualquier categoría de gasto que
+ * mencione "deuda" (la default "Deudas" incluida). No la valida el backend,
+ * es puramente para no mostrar el selector en gastos que claramente no son
+ * pagos de deuda. */
+const DEBT_CATEGORY_HINT = /deuda/i;
 
 export interface TransactionFormValues {
   input: TransactionInput;
@@ -63,6 +71,7 @@ export function TransactionForm({
   const [paymentMethod, setPaymentMethod] = useState(initialData?.paymentMethod ?? '');
   const [description, setDescription] = useState(initialData?.description ?? '');
   const [file, setFile] = useState<File | null>(null);
+  const [debtId, setDebtId] = useState(initialData?.debtId ?? '');
 
   const isOtherCategory = category === 'Otra';
   const numericAmount = Number(amount.replace(',', '.'));
@@ -70,7 +79,8 @@ export function TransactionForm({
   // Las categorías dependen del tipo (income/expense); si el usuario cambia
   // de tipo después de montar el form, la categoría seleccionada ya no
   // aplica y hay que limpiarla (no corre en el primer render, para no pisar
-  // initialData al editar).
+  // initialData al editar). El vínculo a deuda solo aplica a gastos, así que
+  // se limpia junto con la categoría.
   const isFirstTypeRender = useRef(true);
   useEffect(() => {
     if (isFirstTypeRender.current) {
@@ -79,7 +89,15 @@ export function TransactionForm({
     }
     setCategory('');
     setCustomCategory('');
+    setDebtId('');
   }, [type]);
+
+  // Solo se ofrece cuando la categoría sugiere un pago de deuda; si la
+  // transacción ya venía vinculada a una (editando), se deja visible para
+  // poder desvincularla aunque la categoría no calce con el patrón.
+  const showDebtSelector =
+    type === 'expense' && (DEBT_CATEGORY_HINT.test(category) || Boolean(initialData?.debtId));
+  const { data: activeDebts } = useDebts({ active: true }, { enabled: type === 'expense' });
 
   const estimatedVES = useMemo(() => {
     if (!rates || !numericAmount) return null;
@@ -91,6 +109,13 @@ export function TransactionForm({
     const finalCategory = isOtherCategory ? customCategory.trim() : category;
     if (!numericAmount || numericAmount <= 0 || !finalCategory) return;
 
+    // El backend rechaza debtId en ingresos, así que ni se manda el campo.
+    // En gastos: un id elegido se manda tal cual; si había uno y se limpió,
+    // hay que mandar null explícito para desvincular (undefined no cambia
+    // nada en un PATCH); si nunca hubo uno, se omite.
+    const debtIdPayload =
+      type === 'expense' ? debtId || (initialData?.debtId ? null : undefined) : undefined;
+
     onSubmit({
       input: {
         type,
@@ -100,6 +125,7 @@ export function TransactionForm({
         category: finalCategory,
         paymentMethod: paymentMethod || undefined,
         description: description.trim() || undefined,
+        debtId: debtIdPayload,
       },
       file,
     });
@@ -206,6 +232,25 @@ export function TransactionForm({
           onChange={(e) => setCustomCategory(e.target.value)}
           className="rounded-lg border border-slate-300 px-3 py-2.5 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
         />
+      )}
+
+      {/* Vínculo a deuda (solo gastos, y solo si la categoría sugiere un pago de deuda) */}
+      {showDebtSelector && (
+        <label className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-slate-600">Vincular a una deuda (opcional)</span>
+          <select
+            value={debtId}
+            onChange={(e) => setDebtId(e.target.value)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2.5 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+          >
+            <option value="">Ninguna</option>
+            {activeDebts?.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
 
       {/* Método de pago */}

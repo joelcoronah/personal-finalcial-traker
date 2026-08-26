@@ -1,15 +1,36 @@
-import { TrendingUp, TrendingDown, Scale } from 'lucide-react';
 import { CURRENCIES } from '../../types';
-import type { Summary } from '../../types';
+import type { CurrencyTotals } from '../../types';
 import { formatCurrencyCompact } from '../../lib/currency';
 import { Skeleton } from '../common/Skeleton';
 
+export interface StatRow {
+  key: string;
+  label: string;
+  value: CurrencyTotals;
+  icon?: React.ReactNode;
+  /** 'warning' resalta en rojo (ej. "Pendiente por asignar" negativo = sobre-asignado). */
+  tone?: 'positive' | 'negative' | 'neutral' | 'warning';
+}
+
 interface SummaryCardsProps {
-  summary?: Summary;
+  rows: StatRow[];
   isLoading: boolean;
 }
 
-export function SummaryCards({ summary, isLoading }: SummaryCardsProps) {
+const TONE_CLASS: Record<NonNullable<StatRow['tone']>, string> = {
+  positive: 'text-emerald-600',
+  negative: 'text-red-500',
+  warning: 'text-red-500',
+  neutral: 'text-slate-700',
+};
+
+/**
+ * Grilla de tarjetas por moneda (una tarjeta por cada VES/USD/EUR/USDT), cada
+ * una apilando las mismas filas de estadísticas. Generaliza lo que antes era
+ * un componente fijo a Ingresos/Gastos/Balance para poder reusarlo en
+ * Dashboard y Plan del mes con distintos conjuntos de métricas.
+ */
+export function SummaryCards({ rows, isLoading }: SummaryCardsProps) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {CURRENCIES.map((currency) => (
@@ -18,29 +39,27 @@ export function SummaryCards({ summary, isLoading }: SummaryCardsProps) {
             {currency}
           </p>
 
-          {isLoading || !summary ? (
+          {isLoading ? (
             <div className="mt-2 flex flex-col gap-1.5">
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-4 w-1/2" />
-              <Skeleton className="h-4 w-2/3" />
+              {rows.map((row) => (
+                <Skeleton key={row.key} className="h-4 w-3/4" />
+              ))}
             </div>
           ) : (
             <div className="mt-2 flex flex-col gap-1 text-sm">
-              <Row
-                icon={<TrendingUp size={13} className="text-emerald-500" />}
-                value={formatCurrencyCompact(summary.totals.income[currency], currency)}
-                className="text-emerald-600"
-              />
-              <Row
-                icon={<TrendingDown size={13} className="text-red-500" />}
-                value={formatCurrencyCompact(summary.totals.expense[currency], currency)}
-                className="text-red-500"
-              />
-              <Row
-                icon={<Scale size={13} className="text-slate-400" />}
-                value={formatCurrencyCompact(summary.totals.balance[currency], currency)}
-                className="font-semibold text-slate-700"
-              />
+              {rows.map((row) => {
+                const negative = row.value[currency] < 0;
+                const tone = row.tone === 'warning' && negative ? 'warning' : (row.tone ?? 'neutral');
+                return (
+                  <Row
+                    key={row.key}
+                    icon={row.icon}
+                    label={row.label}
+                    value={formatCurrencyCompact(row.value[currency], currency)}
+                    className={TONE_CLASS[tone]}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
@@ -51,17 +70,22 @@ export function SummaryCards({ summary, isLoading }: SummaryCardsProps) {
 
 function Row({
   icon,
+  label,
   value,
   className,
 }: {
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
+  label: string;
   value: string;
   className?: string;
 }) {
   return (
-    <span className={`flex items-center gap-1 truncate ${className ?? ''}`}>
-      {icon}
-      {value}
+    <span className={`flex items-center justify-between gap-2 truncate ${className ?? ''}`} title={label}>
+      <span className="flex min-w-0 items-center gap-1 truncate text-slate-500">
+        {icon}
+        <span className="truncate">{label}</span>
+      </span>
+      <span className="shrink-0 font-medium">{value}</span>
     </span>
   );
 }

@@ -4,26 +4,41 @@ import clsx from 'clsx';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ErrorState } from '../components/common/ErrorState';
 import { Skeleton } from '../components/common/Skeleton';
+import { SummaryCards, type StatRow } from '../components/dashboard/SummaryCards';
+import { SavingsCard } from '../components/dashboard/SavingsCard';
+import { DebtSummaryCard } from '../components/debts/DebtSummaryCard';
+import { CategoryEnvelopes } from '../components/plan/CategoryEnvelopes';
 import { useBudgetPlanProgress } from '../hooks/useBudgetPlan';
 import { useSaveBudgetPlan } from '../hooks/useBudgetPlanMutations';
 import { currentMonthKey, formatMonthLabel, shiftMonthKey } from '../lib/dates';
-import { formatCurrency } from '../lib/currency';
+import { formatCurrency, formatMultiCurrency } from '../lib/currency';
 import {
   BUDGET_GROUP_LABEL,
   BUDGET_GROUPS,
   DEFAULT_BUDGET_PLAN,
   type BudgetGroup,
+  type BudgetPlanProgress,
   type CurrencyTotals,
 } from '../types';
 
-/**
- * amount ya viene del backend como la suma de cada transacción convertida
- * con SU PROPIA tasa histórica (no la de hoy) — ver comentario en
- * BudgetGroupProgress dentro de types/index.ts. Por eso esto solo formatea,
- * no convierte: no hace falta /rates/today acá.
- */
-function formatEquivalents(amount: CurrencyTotals): string {
-  return `${formatCurrency(amount.USD, 'USD')} · ${formatCurrency(amount.USDT, 'USDT')}`;
+function buildSummaryRows(progress: BudgetPlanProgress): StatRow[] {
+  return [
+    { key: 'income', label: 'Ingresos totales', value: progress.income, tone: 'positive' },
+    { key: 'debtContribution', label: 'Aporte a deudas', value: progress.debt.monthContribution },
+    { key: 'assigned', label: 'Asignado para presupuesto', value: progress.assignment.totalAssigned },
+    {
+      key: 'readyToAssign',
+      label: 'Pendiente por asignar',
+      value: progress.assignment.readyToAssign,
+      tone: 'warning',
+    },
+    {
+      key: 'availableToSpend',
+      label: 'Disponible para gastar',
+      value: progress.assignment.availableToSpend,
+    },
+    { key: 'expense', label: 'Gastado hasta ahora', value: progress.expense, tone: 'negative' },
+  ];
 }
 
 // El plan solo se mide contra gastos: las 3 categorías del 50/30/20
@@ -117,66 +132,92 @@ export default function Plan() {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          {progress.income.VES === 0 ? (
-            <p className="text-sm text-slate-400">Sin ingresos registrados este mes: el % real se mide sobre el ingreso.</p>
-          ) : (
-            <>
-              {BUDGET_GROUPS.map((g) => (
-                <GroupBar
-                  key={g}
-                  label={BUDGET_GROUP_LABEL[g]}
-                  color={GROUP_COLOR[g]}
-                  target={targetByGroup[g]}
-                  actual={progress.groups[g].actualPct}
-                  amount={progress.groups[g].amount}
-                />
-              ))}
+        <>
+          <SummaryCards rows={buildSummaryRows(progress)} isLoading={false} />
 
-              {progress.unclassified.amount.VES > 0 && (
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <span className="font-medium text-slate-500">Sin categorizar</span>
-                    <span className="text-xs text-slate-400">{progress.unclassified.actualPct.toFixed(0)}%</span>
-                  </div>
-                  <p className="mb-1 text-xs text-slate-400">
-                    {formatCurrency(progress.unclassified.amount.VES, 'VES')} ·{' '}
-                    {formatEquivalents(progress.unclassified.amount)}
-                  </p>
-                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-slate-300"
-                      style={{ width: `${Math.min(progress.unclassified.actualPct, 100)}%` }}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <SavingsCard savingsAccumulated={progress.savingsAccumulated} isLoading={false} />
+            <DebtSummaryCard debt={progress.debt} isLoading={false} />
+          </div>
+
+          <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            {progress.income.VES === 0 ? (
+              <p className="text-sm text-slate-400">Sin ingresos registrados este mes: el % real se mide sobre el ingreso.</p>
+            ) : (
+              <>
+                {BUDGET_GROUPS.map((g) => (
+                  <div key={g}>
+                    <GroupBar
+                      label={BUDGET_GROUP_LABEL[g]}
+                      color={GROUP_COLOR[g]}
+                      target={targetByGroup[g]}
+                      actual={progress.groups[g].actualPct}
+                      amount={progress.groups[g].amount}
+                      // El backend ya la calcula cuando hay plan guardado; si no
+                      // (hasPlan: false), caemos en el mismo cálculo % × ingreso
+                      // que ya usa el marcador de la barra.
+                      targetAmount={
+                        progress.groups[g].targetAmount ?? {
+                          VES: (targetByGroup[g] / 100) * progress.income.VES,
+                          USD: (targetByGroup[g] / 100) * progress.income.USD,
+                          EUR: (targetByGroup[g] / 100) * progress.income.EUR,
+                          USDT: (targetByGroup[g] / 100) * progress.income.USDT,
+                        }
+                      }
+                    />
+                    <CategoryEnvelopes
+                      group={g}
+                      month={month}
+                      byCategory={progress.assignment.byCategory}
+                      color={GROUP_COLOR[g]}
                     />
                   </div>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Asigna un grupo a esas categorías en{' '}
-                    <Link to="/categorias" className="font-medium text-emerald-600 hover:underline">
-                      Categorías
-                    </Link>{' '}
-                    para que cuenten en el plan.
-                  </p>
-                </div>
-              )}
+                ))}
 
-              <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-slate-500">Total gastado</span>
-                  <span className="font-semibold text-slate-700">
-                    {formatCurrency(progress.expense.VES, 'VES')}
-                  </span>
+                {progress.unclassified.amount.VES > 0 && (
+                  <div>
+                    <div className="mb-1 flex items-center justify-between text-sm">
+                      <span className="font-medium text-slate-500">Sin categorizar</span>
+                      <span className="text-xs text-slate-400">{progress.unclassified.actualPct.toFixed(0)}%</span>
+                    </div>
+                    <p className="mb-1 text-xs text-slate-400">
+                      {formatMultiCurrency(progress.unclassified.amount)}
+                    </p>
+                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-slate-300"
+                        style={{ width: `${Math.min(progress.unclassified.actualPct, 100)}%` }}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Asigna un grupo a esas categorías en{' '}
+                      <Link to="/categorias" className="font-medium text-emerald-600 hover:underline">
+                        Categorías
+                      </Link>{' '}
+                      para que cuenten en el plan.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-slate-500">Total gastado</span>
+                    <span className="font-semibold text-slate-700">
+                      {formatCurrency(progress.expense.VES, 'VES')}
+                    </span>
+                  </div>
+                  <p className="-mt-1 text-right text-xs text-slate-400">
+                    {formatCurrency(progress.expense.USD, 'USD')} · {formatCurrency(progress.expense.USDT, 'USDT')}
+                  </p>
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>Ingreso del mes</span>
+                    <span>{formatMultiCurrency(progress.income)}</span>
+                  </div>
                 </div>
-                <p className="-mt-1 text-right text-xs text-slate-400">{formatEquivalents(progress.expense)}</p>
-                <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span>Ingreso del mes</span>
-                  <span>
-                    {formatCurrency(progress.income.VES, 'VES')} · {formatEquivalents(progress.income)}
-                  </span>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </div>
+        </>
       )}
 
       <form
@@ -219,12 +260,15 @@ function GroupBar({
   target,
   actual,
   amount,
+  targetAmount,
 }: {
   label: string;
   color: string;
   target: number;
   actual: number;
   amount: CurrencyTotals;
+  /** Meta en monto ya calculada por el backend; null si el mes no tiene plan guardado. */
+  targetAmount: CurrencyTotals | null;
 }) {
   return (
     <div>
@@ -238,9 +282,18 @@ function GroupBar({
           <span className="font-semibold text-slate-600">{actual.toFixed(0)}%</span>
         </span>
       </div>
-      <p className="mb-1 text-xs text-slate-400">
-        {formatCurrency(amount.VES, 'VES')} · {formatEquivalents(amount)}
-      </p>
+      <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
+        <span>
+          Objetivo:{' '}
+          <span className="font-medium text-slate-600">
+            {targetAmount ? formatCurrency(targetAmount.VES, 'VES') : '—'}
+          </span>
+        </span>
+        <span>
+          Real: <span className="font-medium text-slate-600">{formatCurrency(amount.VES, 'VES')}</span>
+        </span>
+      </div>
+      <p className="mb-1 text-xs text-slate-400">{formatMultiCurrency(amount)}</p>
       <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
         <div
           className="h-full rounded-full transition-all"

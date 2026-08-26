@@ -7,6 +7,8 @@ import EditTransaction from './pages/EditTransaction';
 import Reports from './pages/Reports';
 import Categories from './pages/Categories';
 import Plan from './pages/Plan';
+import Debts from './pages/Debts';
+import DebtDetail from './pages/DebtDetail';
 
 export default function App() {
   return (
@@ -19,6 +21,8 @@ export default function App() {
         <Route path="/resumen" element={<Reports />} />
         <Route path="/categorias" element={<Categories />} />
         <Route path="/plan" element={<Plan />} />
+        <Route path="/deudas" element={<Debts />} />
+        <Route path="/deudas/:id" element={<DebtDetail />} />
       </Route>
     </Routes>
   );

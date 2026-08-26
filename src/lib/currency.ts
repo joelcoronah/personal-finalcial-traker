@@ -1,4 +1,4 @@
-import type { Currency, RatesSnapshot } from '../types';
+import type { Currency, CurrencyTotals, RatesSnapshot } from '../types';
 
 /** Símbolo/prefijo a mostrar por cada moneda. */
 export const CURRENCY_SYMBOL: Record<Currency, string> = {
@@ -37,6 +37,18 @@ export function formatCurrencyCompact(amount: number, currency: Currency): strin
   }).format(amount ?? 0);
   const symbol = CURRENCY_SYMBOL[currency];
   return currency === 'VES' ? `${symbol} ${formatted}` : `${symbol}${formatted}`;
+}
+
+/**
+ * Formatea un monto multi-moneda (ej. `assigned`, `debt.totalRemainingDebt`)
+ * como "Bs. X · $Y · USDT Z": VES como monto principal y USD/USDT como
+ * equivalencia rápida, sin repetir EUR (poco usado fuera del monto original
+ * de una transacción). Estos montos ya vienen convertidos por el backend
+ * (con su propia tasa histórica o la de hoy, según el endpoint), así que acá
+ * solo se formatea — no se convierte nada.
+ */
+export function formatMultiCurrency(amount: CurrencyTotals): string {
+  return `${formatCurrency(amount.VES, 'VES')} · ${formatCurrency(amount.USD, 'USD')} · ${formatCurrency(amount.USDT, 'USDT')}`;
 }
 
 /** Formatea solo el número, sin símbolo (para inputs). */

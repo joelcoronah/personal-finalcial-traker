@@ -1,6 +1,11 @@
 import axios from 'axios';
 import { apiClient } from './client';
-import type { BudgetPlan, BudgetPlanInput, BudgetPlanProgress } from '../types';
+import type {
+  BudgetPlan,
+  BudgetPlanInput,
+  BudgetPlanProgress,
+  CategoryAssignmentInput,
+} from '../types';
 
 /** Devuelve null si el mes no tiene plan guardado (404) en vez de lanzar. */
 export async function getBudgetPlan(month: string): Promise<BudgetPlan | null> {
@@ -23,4 +28,24 @@ export async function saveBudgetPlan(month: string, input: BudgetPlanInput): Pro
 export async function getBudgetPlanProgress(month: string): Promise<BudgetPlanProgress> {
   const { data } = await apiClient.get<BudgetPlanProgress>(`/budget-plans/${month}/progress`);
   return data;
+}
+
+/**
+ * Crea o reemplaza (upsert) el sobre de presupuesto de una categoría para el
+ * mes. `amount` va en `currencyOriginal`; el backend lo convierte a VES con
+ * la tasa de hoy. Para leer los sobres ya calculados (con spent/available)
+ * hay que usar `assignment.byCategory` de getBudgetPlanProgress, no este
+ * endpoint — este solo se usa para escribir.
+ */
+export async function saveCategoryAssignment(
+  month: string,
+  categoryId: string,
+  input: CategoryAssignmentInput,
+): Promise<void> {
+  await apiClient.put(`/budget-plans/${month}/assignments/${categoryId}`, input);
+}
+
+/** Quita el sobre de presupuesto de una categoría para el mes. */
+export async function deleteCategoryAssignment(month: string, categoryId: string): Promise<void> {
+  await apiClient.delete(`/budget-plans/${month}/assignments/${categoryId}`);
 }

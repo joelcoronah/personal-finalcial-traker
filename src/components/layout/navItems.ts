@@ -1,4 +1,4 @@
-import { LayoutDashboard, PlusCircle, List, PieChart, Tags, Target } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, List, PieChart, Tags, Target, Landmark } from 'lucide-react';
 
 export const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -7,4 +7,5 @@ export const NAV_ITEMS = [
   { to: '/resumen', label: 'Resumen', icon: PieChart, end: false },
   { to: '/categorias', label: 'Categorías', icon: Tags, end: false },
   { to: '/plan', label: 'Plan', icon: Target, end: false },
+  { to: '/deudas', label: 'Deudas', icon: Landmark, end: false },
 ];

@@ -1,4 +1,4 @@
-import type { CategoriesQuery, TransactionsQuery } from '../types';
+import type { CategoriesQuery, DebtsQuery, TransactionsQuery } from '../types';
 
 /** Centraliza las query keys de React Query para invalidar cache de forma consistente. */
 export const queryKeys = {
@@ -9,4 +9,6 @@ export const queryKeys = {
   categories: (query?: CategoriesQuery) => ['categories', query ?? {}] as const,
   budgetPlan: (month: string) => ['budget-plans', month] as const,
   budgetPlanProgress: (month: string) => ['budget-plans', month, 'progress'] as const,
+  debts: (query?: DebtsQuery) => ['debts', query ?? {}] as const,
+  debt: (id: string) => ['debts', id] as const,
 };

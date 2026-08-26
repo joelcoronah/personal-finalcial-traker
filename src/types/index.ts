@@ -90,6 +90,8 @@ export interface Transaction {
   description?: string;
   receiptImageUrl?: string | null;
   rateSnapshot: RatesSnapshot;
+  /** Deuda a la que está vinculada esta transacción (solo aplica a gastos). */
+  debtId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -103,6 +105,8 @@ export interface TransactionInput {
   category: string;
   paymentMethod?: string;
   description?: string;
+  /** Solo válido cuando type === 'expense'; el backend rechaza el campo en ingresos. */
+  debtId?: string | null;
 }
 
 export interface TransactionsQuery {
@@ -215,6 +219,47 @@ export const DEFAULT_BUDGET_PLAN: BudgetPlanInput = {
 export interface BudgetGroupProgress {
   amount: CurrencyTotals;
   actualPct: number;
+  /**
+   * Meta en monto (targetPct del grupo aplicado a income - aporte a deudas),
+   * ya calculada por el backend. null si el mes no tiene plan guardado
+   * (hasPlan: false) — en ese caso el frontend cae en el default 50/30/20.
+   */
+  targetAmount: CurrencyTotals | null;
+}
+
+/** Resumen de deudas del período, compartido por /summary y /budget-plans/:month/progress. */
+export interface DebtSummary {
+  /** Saldo pendiente de todas las deudas activas, valorado hoy. */
+  totalRemainingDebt: CurrencyTotals;
+  /** Pagos a deudas hechos dentro del período/mes consultado. */
+  monthContribution: CurrencyTotals;
+  activeDebtCount: number;
+}
+
+/**
+ * Un "sobre" de presupuesto por categoría para el mes: cuánto se le asignó
+ * (assigned), cuánto se gastó realmente (spent) y cuánto queda (available).
+ * Si la categoría tuvo gasto pero nunca se le asignó sobre, assigned viene en
+ * 0 — el frontend no debe ocultar esas filas, para no esconder gasto sin
+ * presupuestar.
+ */
+export interface CategoryAssignmentProgress {
+  categoryId: string;
+  categoryName: string;
+  budgetGroup: BudgetGroup | null;
+  assigned: CurrencyTotals;
+  spent: CurrencyTotals;
+  available: CurrencyTotals;
+}
+
+/** Resumen de asignación de presupuesto del período, compartido por /summary y /progress. */
+export interface AssignmentSummary {
+  totalAssigned: CurrencyTotals;
+  /** income - totalAssigned; puede ser negativo (sobre-asignado). */
+  readyToAssign: CurrencyTotals;
+  /** income - expense. */
+  availableToSpend: CurrencyTotals;
+  byCategory: CategoryAssignmentProgress[];
 }
 
 /**
@@ -233,6 +278,10 @@ export interface BudgetPlanProgress {
   expense: CurrencyTotals;
   groups: Record<BudgetGroup, BudgetGroupProgress>;
   unclassified: BudgetGroupProgress;
+  debt: DebtSummary;
+  assignment: AssignmentSummary;
+  /** Total histórico puesto en categorías de grupo "savings", valorado hoy. Solo crece: no hay flujo de retiro todavía. */
+  savingsAccumulated: CurrencyTotals;
 }
 
 /** Totales en las 4 monedas de referencia. */
@@ -264,4 +313,59 @@ export interface Summary {
   byCategory: CategoryBreakdownItem[];
   /** Tasas de HOY, solo de referencia — no son las usadas para los totales de arriba. */
   currentRates: RatesSnapshot;
+  debt: DebtSummary;
+  assignment: AssignmentSummary;
+  /** Total histórico puesto en categorías de grupo "savings", valorado hoy. Solo crece: no hay flujo de retiro todavía. */
+  savingsAccumulated: CurrencyTotals;
+}
+
+// ---------------------------------------------------------------------------
+// Deudas (CRUD en /debts). totalAmount/paidAmount/remainingBalance/minPayment
+// vienen ya convertidos a las 4 monedas de referencia; currencyOriginal es
+// solo la moneda en la que se declaró la deuda (y en la que se escriben los
+// inputs de creación/edición).
+// ---------------------------------------------------------------------------
+
+export interface Debt {
+  id: string;
+  name: string;
+  currencyOriginal: Currency;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  totalAmount: CurrencyTotals;
+  paidAmount: CurrencyTotals;
+  remainingBalance: CurrencyTotals;
+  percentPaid: number; // 0-100
+  minPayment: CurrencyTotals | null;
+}
+
+/** GET /debts/:id agrega las transacciones vinculadas más recientes. */
+export interface DebtDetail extends Debt {
+  payments: Transaction[];
+}
+
+export interface DebtInput {
+  name: string;
+  totalAmount: number;
+  currencyOriginal: Currency;
+  minPayment?: number;
+}
+
+export interface DebtUpdateInput extends Partial<DebtInput> {
+  isActive?: boolean;
+}
+
+export interface DebtsQuery {
+  /** Omitir para incluir también las deudas archivadas (isActive: false). */
+  active?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Sobres de presupuesto por categoría (CRUD en /budget-plans/:month/assignments)
+// ---------------------------------------------------------------------------
+
+export interface CategoryAssignmentInput {
+  amount: number;
+  currencyOriginal: Currency;
 }
