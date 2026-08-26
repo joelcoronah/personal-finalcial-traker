@@ -16,9 +16,19 @@ export const CURRENCY_LABEL: Record<Currency, string> = {
 };
 
 /**
+ * Símbolos de una sola letra ($, €) van pegados al número, como es
+ * convención; los de varias letras (Bs., USDT) necesitan un espacio o se
+ * leen pegados al número (ej. "USDT1.000,00").
+ */
+function withSymbol(symbol: string, formatted: string): string {
+  return symbol.length > 1 ? `${symbol} ${formatted}` : `${symbol}${formatted}`;
+}
+
+/**
  * Formatea un monto con separador de miles y el símbolo correspondiente.
  * Ej: formatCurrency(1234.5, 'VES') -> "Bs. 1.234,50"
  *     formatCurrency(12.5, 'USD')   -> "$12,50"
+ *     formatCurrency(12.5, 'USDT')  -> "USDT 12,50"
  */
 export function formatCurrency(amount: number, currency: Currency): string {
   const formatted = new Intl.NumberFormat('es-VE', {
@@ -26,8 +36,7 @@ export function formatCurrency(amount: number, currency: Currency): string {
     maximumFractionDigits: 2,
   }).format(amount ?? 0);
 
-  const symbol = CURRENCY_SYMBOL[currency];
-  return currency === 'VES' ? `${symbol} ${formatted}` : `${symbol}${formatted}`;
+  return withSymbol(CURRENCY_SYMBOL[currency], formatted);
 }
 
 /** Igual que formatCurrency pero sin decimales, útil para totales grandes. */
@@ -35,8 +44,7 @@ export function formatCurrencyCompact(amount: number, currency: Currency): strin
   const formatted = new Intl.NumberFormat('es-VE', {
     maximumFractionDigits: 0,
   }).format(amount ?? 0);
-  const symbol = CURRENCY_SYMBOL[currency];
-  return currency === 'VES' ? `${symbol} ${formatted}` : `${symbol}${formatted}`;
+  return withSymbol(CURRENCY_SYMBOL[currency], formatted);
 }
 
 /**
