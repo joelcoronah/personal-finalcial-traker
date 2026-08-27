@@ -137,83 +137,88 @@ export default function Plan() {
           </div>
 
           <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            {progress.income.VES === 0 ? (
+            {progress.income.VES === 0 && (
               <p className="text-sm text-slate-400">Sin ingresos registrados este mes: el % real se mide sobre el ingreso.</p>
-            ) : (
-              <>
-                {BUDGET_GROUPS.map((g) => (
-                  <div key={g}>
-                    <GroupBar
-                      label={BUDGET_GROUP_LABEL[g]}
-                      color={GROUP_COLOR[g]}
-                      target={targetByGroup[g]}
-                      actual={progress.groups[g].actualPct}
-                      amount={progress.groups[g].amount}
-                      currency={currency}
-                      // El backend ya la calcula cuando hay plan guardado; si no
-                      // (hasPlan: false), caemos en el mismo cálculo % × ingreso
-                      // que ya usa el marcador de la barra.
-                      targetAmount={
-                        progress.groups[g].targetAmount ?? {
-                          VES: (targetByGroup[g] / 100) * progress.income.VES,
-                          USD: (targetByGroup[g] / 100) * progress.income.USD,
-                          EUR: (targetByGroup[g] / 100) * progress.income.EUR,
-                          USDT: (targetByGroup[g] / 100) * progress.income.USDT,
-                        }
-                      }
-                    />
-                    <CategoryEnvelopes
-                      group={g}
-                      month={month}
-                      byCategory={progress.assignment.byCategory}
-                      color={GROUP_COLOR[g]}
-                      currency={currency}
-                    />
-                  </div>
-                ))}
-
-                {progress.unclassified.amount.VES > 0 && (
-                  <div>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className="font-medium text-slate-500">Sin categorizar</span>
-                      <span className="text-xs text-slate-400">{progress.unclassified.actualPct.toFixed(0)}%</span>
-                    </div>
-                    <p className="mb-1 text-xs text-slate-400">
-                      {formatCurrency(progress.unclassified.amount[currency], currency)}
-                    </p>
-                    <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className="h-full rounded-full bg-slate-300"
-                        style={{ width: `${Math.min(progress.unclassified.actualPct, 100)}%` }}
-                      />
-                    </div>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Asigna un grupo a esas categorías en{' '}
-                      <Link to="/categorias" className="font-medium text-emerald-600 hover:underline">
-                        Categorías
-                      </Link>{' '}
-                      para que cuenten en el plan.
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-slate-500">Total gastado</span>
-                    <span className="font-semibold text-slate-700">
-                      {formatCurrency(progress.expense.VES, 'VES')}
-                    </span>
-                  </div>
-                  <p className="-mt-1 text-right text-xs text-slate-400">
-                    {formatCurrency(progress.expense.USD, 'USD')} · {formatCurrency(progress.expense.USDT, 'USDT')}
-                  </p>
-                  <div className="flex items-center justify-between text-xs text-slate-400">
-                    <span>Ingreso del mes</span>
-                    <span>{formatMultiCurrency(progress.income)}</span>
-                  </div>
-                </div>
-              </>
             )}
+
+            {BUDGET_GROUPS.map((g) => (
+              <div key={g}>
+                {/* La barra de % real vs. meta necesita ingreso como
+                    denominador y no tiene sentido sin él, pero los sobres por
+                    categoría (CategoryEnvelopes) no dependen de si hubo
+                    ingresos este mes — deben poder editarse/borrarse siempre,
+                    aunque el mes todavía no tenga ingresos registrados. */}
+                {progress.income.VES > 0 && (
+                  <GroupBar
+                    label={BUDGET_GROUP_LABEL[g]}
+                    color={GROUP_COLOR[g]}
+                    target={targetByGroup[g]}
+                    actual={progress.groups[g].actualPct}
+                    amount={progress.groups[g].amount}
+                    currency={currency}
+                    // El backend ya la calcula cuando hay plan guardado; si no
+                    // (hasPlan: false), caemos en el mismo cálculo % × ingreso
+                    // que ya usa el marcador de la barra.
+                    targetAmount={
+                      progress.groups[g].targetAmount ?? {
+                        VES: (targetByGroup[g] / 100) * progress.income.VES,
+                        USD: (targetByGroup[g] / 100) * progress.income.USD,
+                        EUR: (targetByGroup[g] / 100) * progress.income.EUR,
+                        USDT: (targetByGroup[g] / 100) * progress.income.USDT,
+                      }
+                    }
+                  />
+                )}
+                <CategoryEnvelopes
+                  group={g}
+                  month={month}
+                  byCategory={progress.assignment.byCategory}
+                  color={GROUP_COLOR[g]}
+                  currency={currency}
+                />
+              </div>
+            ))}
+
+            {progress.unclassified.amount.VES > 0 && (
+              <div>
+                <div className="mb-1 flex items-center justify-between text-sm">
+                  <span className="font-medium text-slate-500">Sin categorizar</span>
+                  <span className="text-xs text-slate-400">{progress.unclassified.actualPct.toFixed(0)}%</span>
+                </div>
+                <p className="mb-1 text-xs text-slate-400">
+                  {formatCurrency(progress.unclassified.amount[currency], currency)}
+                </p>
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-slate-300"
+                    style={{ width: `${Math.min(progress.unclassified.actualPct, 100)}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  Asigna un grupo a esas categorías en{' '}
+                  <Link to="/categorias" className="font-medium text-emerald-600 hover:underline">
+                    Categorías
+                  </Link>{' '}
+                  para que cuenten en el plan.
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-slate-500">Total gastado</span>
+                <span className="font-semibold text-slate-700">
+                  {formatCurrency(progress.expense.VES, 'VES')}
+                </span>
+              </div>
+              <p className="-mt-1 text-right text-xs text-slate-400">
+                {formatCurrency(progress.expense.USD, 'USD')} · {formatCurrency(progress.expense.USDT, 'USDT')}
+              </p>
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Ingreso del mes</span>
+                <span>{formatMultiCurrency(progress.income)}</span>
+              </div>
+            </div>
           </div>
         </>
       )}
