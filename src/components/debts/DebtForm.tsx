@@ -117,7 +117,7 @@ export function DebtForm({
             placeholder="0,00"
             value={minPayment}
             onChange={(e) => setMinPayment(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 py-2.5 pl-12 pr-3 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+            className="w-full rounded-lg border border-slate-300 py-2.5 pl-16 pr-4 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100"
           />
         </div>
       </label>
